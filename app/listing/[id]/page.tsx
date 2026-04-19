@@ -4,24 +4,26 @@ import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import useSWR from "swr"
 import {
   Star, MapPin, Users, Bed, Wifi, Wind, ParkingMeterIcon as Parking, Tv, Waves, ChefHat,
-  WashingMachine, Home, ChevronLeft, Share, Heart, Calendar, CheckCircle, Shield, Navigation
+  WashingMachine, Home, ChevronLeft, Share, Heart, Calendar, CheckCircle, Shield, Navigation, Loader2
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Navbar } from "@/components/navbar"
+import { Footer } from "@/components/footer"
+import { useI18n } from "@/lib/i18n-context"
+import { useAuth } from "@/lib/auth-context"
+import { Property } from "@/components/property-card"
 
-// Open Google Maps with directions
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
 function openGoogleMapsDirections(lat: number, lng: number) {
   const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
   window.open(url, "_blank")
 }
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { useI18n } from "@/lib/i18n-context"
-import { MOCK_PROPERTIES, MOCK_REVIEWS } from "@/lib/mock-data"
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   wifi: <Wifi className="h-5 w-5" />,
@@ -34,16 +36,65 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
   balcony: <Home className="h-5 w-5" />,
 }
 
+interface Review {
+  id: number
+  user_name: string
+  rating: number
+  comment: string
+  created_at: string
+}
+
+interface PropertyDetail extends Property {
+  description: string
+  host_name: string
+  host_avatar: string | null
+  images: string[]
+  reviews: Review[]
+}
+
 export default function ListingPage() {
   const { t } = useI18n()
+  const { user } = useAuth()
   const params = useParams()
-  const property = MOCK_PROPERTIES.find((p) => p.id === params.id) || MOCK_PROPERTIES[0]
+
+  const { data, isLoading, error } = useSWR<{ property: PropertyDetail }>(
+    `/api/properties/${params.id}`,
+    fetcher
+  )
 
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
   const [guests, setGuests] = useState(1)
   const [wishlisted, setWishlisted] = useState(false)
-  const [showBookingModal, setShowBookingModal] = useState(false)
+
+  const property = data?.property
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !property) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">Annonce non trouvée</p>
+            <Link href="/search">
+              <Button>Retour à la recherche</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const nights =
     checkIn && checkOut
@@ -57,6 +108,8 @@ export default function ListingPage() {
 
   const serviceFee = Math.round(property.price * 0.1)
   const total = nights * property.price + serviceFee
+
+  const images = property.images?.length > 0 ? property.images : [property.image]
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -79,7 +132,7 @@ export default function ListingPage() {
                 <span className="font-semibold">{property.rating}</span>
                 <span className="text-muted-foreground">({property.reviewCount} {t("listing_reviews")})</span>
               </div>
-              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">.</span>
               <button 
                 onClick={() => property.lat && property.lng && openGoogleMapsDirections(property.lat, property.lng)}
                 className="flex items-center gap-1 text-muted-foreground hover:text-accent transition-colors group"
@@ -93,7 +146,6 @@ export default function ListingPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            {/* Directions Button */}
             {property.lat && property.lng && (
               <Button 
                 variant="outline" 
@@ -124,11 +176,11 @@ export default function ListingPage() {
         {/* Photo Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 rounded-2xl overflow-hidden mb-8 aspect-[16/7]">
           <div className="col-span-2 row-span-2 relative">
-            <Image src={property.image} alt={property.title} fill className="object-cover" />
+            <Image src={images[0]} alt={property.title} fill className="object-cover" />
           </div>
-          {MOCK_PROPERTIES.slice(1, 5).map((p, i) => (
+          {images.slice(1, 5).map((img, i) => (
             <div key={i} className="relative hidden md:block">
-              <Image src={p.image} alt="" fill className="object-cover" />
+              <Image src={img} alt="" fill className="object-cover" />
             </div>
           ))}
         </div>
@@ -141,13 +193,15 @@ export default function ListingPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
-                  {property.type} · {property.bedrooms} chambres · {property.guests} {t("guests")}
+                  {property.type} . {property.bedrooms} chambres . {property.guests} {t("guests")}
                 </h2>
-                <p className="text-sm text-muted-foreground mt-1">Hébergé par Ahmed K.</p>
+                <p className="text-sm text-muted-foreground mt-1">Hébergé par {property.host_name || "Hôte"}</p>
               </div>
               <div className="relative">
                 <Avatar className="h-12 w-12 border-2 border-primary">
-                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold">AK</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                    {(property.host_name || "H")[0]}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
                   <CheckCircle className="h-3 w-3 text-primary-foreground" />
@@ -180,10 +234,7 @@ export default function ListingPage() {
             <div>
               <h3 className="font-semibold text-foreground mb-3">{t("listing_description")}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Bienvenue dans ce magnifique logement situé au cœur de {property.wilaya}. Profitez d&apos;un espace
-                chaleureux et entièrement équipé pour un séjour inoubliable. Le logement bénéficie d&apos;une vue
-                exceptionnelle et est idéalement situé à proximité des principaux sites touristiques et commerces.
-                Vous serez séduit par son design moderne et son confort optimal.
+                {property.description || `Bienvenue dans ce magnifique logement situé au coeur de ${property.wilaya}. Profitez d'un espace chaleureux et entièrement équipé pour un séjour inoubliable.`}
               </p>
             </div>
 
@@ -208,11 +259,10 @@ export default function ListingPage() {
             <div>
               <h3 className="font-semibold text-foreground mb-3">{t("listing_rules")}</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Arrivée : 14h00 – 22h00</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Arrivée : 14h00 - 22h00</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Départ avant 12h00</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Non-fumeur à l&apos;intérieur</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Animaux non acceptés</li>
-                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Pas de fête ni d&apos;événement</li>
               </ul>
             </div>
 
@@ -223,26 +273,32 @@ export default function ListingPage() {
               <div className="flex items-center gap-2 mb-6">
                 <Star className="h-5 w-5 fill-gold text-gold" />
                 <span className="text-lg font-bold">{property.rating}</span>
-                <span className="text-muted-foreground">· {property.reviewCount} {t("listing_reviews")}</span>
+                <span className="text-muted-foreground">. {property.reviewCount} {t("listing_reviews")}</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {MOCK_REVIEWS.map((rev) => (
-                  <div key={rev.id} className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-semibold">
-                          {rev.avatar}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{rev.user}</p>
-                        <p className="text-xs text-muted-foreground">{rev.date}</p>
+              {property.reviews && property.reviews.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {property.reviews.map((rev) => (
+                    <div key={rev.id} className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-semibold">
+                            {rev.user_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{rev.user_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(rev.created_at).toLocaleDateString("fr-FR")}
+                          </p>
+                        </div>
                       </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{rev.comment}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{rev.comment}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun avis pour le moment.</p>
+              )}
             </div>
           </div>
 
@@ -297,7 +353,7 @@ export default function ListingPage() {
                 </div>
               </div>
 
-              <Link href={`/booking/${property.id}`}>
+              <Link href={user ? `/booking/${property.id}` : "/login"}>
                 <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base font-semibold rounded-xl">
                   {t("booking_reserve")}
                 </Button>
@@ -310,7 +366,7 @@ export default function ListingPage() {
                   <Separator />
                   <div className="flex justify-between pt-2">
                     <span className="text-muted-foreground">
-                      {property.price.toLocaleString()} DA × {nights} {nights === 1 ? t("night") : t("nights")}
+                      {property.price.toLocaleString()} DA x {nights} {nights === 1 ? t("night") : t("nights")}
                     </span>
                     <span className="text-foreground">{(property.price * nights).toLocaleString()} DA</span>
                   </div>

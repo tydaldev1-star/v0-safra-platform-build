@@ -1,34 +1,94 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import useSWR from "swr"
 import {
-  ChevronLeft, Star, Shield, CheckCircle, CreditCard, Smartphone, Calendar, Users
+  ChevronLeft, Star, Shield, CheckCircle, CreditCard, Smartphone, Calendar, Users, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Navbar } from "@/components/navbar"
 import { useI18n } from "@/lib/i18n-context"
-import { MOCK_PROPERTIES } from "@/lib/mock-data"
+import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
+import { Property } from "@/components/property-card"
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 type PaymentMethod = "cib" | "edahabia"
 type BookingStep = "details" | "payment" | "confirmation"
 
 export default function BookingPage() {
   const { t } = useI18n()
+  const { user, isLoading: authLoading } = useAuth()
+  const router = useRouter()
   const params = useParams()
-  const property = MOCK_PROPERTIES.find((p) => p.id === params.id) || MOCK_PROPERTIES[0]
+
+  const { data, isLoading } = useSWR<{ property: Property }>(
+    `/api/properties/${params.id}`,
+    fetcher
+  )
 
   const [step, setStep] = useState<BookingStep>("details")
-  const [checkIn, setCheckIn] = useState("2025-02-10")
-  const [checkOut, setCheckOut] = useState("2025-02-15")
+  const [checkIn, setCheckIn] = useState("")
+  const [checkOut, setCheckOut] = useState("")
   const [guests, setGuests] = useState(2)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cib")
   const [cardNumber, setCardNumber] = useState("")
   const [cardName, setCardName] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [bookingRef, setBookingRef] = useState("")
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, authLoading, router])
+
+  // Set default dates
+  useEffect(() => {
+    if (!checkIn) {
+      const today = new Date()
+      const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+      const nextWeekEnd = new Date(nextWeek.getTime() + 5 * 24 * 60 * 60 * 1000)
+      setCheckIn(nextWeek.toISOString().split("T")[0])
+      setCheckOut(nextWeekEnd.toISOString().split("T")[0])
+    }
+  }, [checkIn])
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
+  const property = data?.property
+
+  if (!property) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">Annonce non trouvée</p>
+            <Link href="/search">
+              <Button>Retour à la recherche</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const nights = Math.max(
     0,
@@ -39,6 +99,38 @@ export default function BookingPage() {
   const subtotal = nights * property.price
   const serviceFee = Math.round(subtotal * 0.1)
   const total = subtotal + serviceFee
+
+  const handlePayment = async () => {
+    setIsSubmitting(true)
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: property.id,
+          check_in: checkIn,
+          check_out: checkOut,
+          guests,
+          total_price: total,
+          payment_method: paymentMethod,
+        }),
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        setBookingRef(result.booking.reference || `SAF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`)
+        setStep("confirmation")
+      } else {
+        alert(result.error || "Une erreur est survenue")
+      }
+    } catch (err) {
+      console.error("Booking error:", err)
+      alert("Une erreur est survenue")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -97,7 +189,7 @@ export default function BookingPage() {
               <p className="text-sm"><span className="text-muted-foreground">Arrivée :</span> <span className="font-medium text-foreground">{new Date(checkIn).toLocaleDateString("fr-FR")}</span></p>
               <p className="text-sm"><span className="text-muted-foreground">Départ :</span> <span className="font-medium text-foreground">{new Date(checkOut).toLocaleDateString("fr-FR")}</span></p>
               <p className="text-sm"><span className="text-muted-foreground">Total :</span> <span className="font-bold text-primary">{total.toLocaleString()} DA</span></p>
-              <p className="text-sm"><span className="text-muted-foreground">Réf. :</span> <span className="font-mono text-xs text-foreground">SAF-{Math.random().toString(36).substring(2, 8).toUpperCase()}</span></p>
+              <p className="text-sm"><span className="text-muted-foreground">Réf. :</span> <span className="font-mono text-xs text-foreground">{bookingRef}</span></p>
             </div>
             <Link href="/">
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -259,7 +351,7 @@ export default function BookingPage() {
                         </label>
                         <input
                           type="text"
-                          placeholder="•••"
+                          placeholder="..."
                           maxLength={3}
                           className="w-full border border-border rounded-lg px-3 py-2.5 text-sm text-foreground bg-transparent outline-none focus:ring-2 focus:ring-primary/30"
                         />
@@ -290,8 +382,12 @@ export default function BookingPage() {
                     </Button>
                     <Button
                       className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-                      onClick={() => setStep("confirmation")}
+                      onClick={handlePayment}
+                      disabled={isSubmitting}
                     >
+                      {isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
                       Payer {total.toLocaleString()} DA
                     </Button>
                   </div>
@@ -324,7 +420,7 @@ export default function BookingPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
-                        {property.price.toLocaleString()} DA × {nights} {nights === 1 ? t("night") : t("nights")}
+                        {property.price.toLocaleString()} DA x {nights} {nights === 1 ? t("night") : t("nights")}
                       </span>
                       <span className="text-foreground">{subtotal.toLocaleString()} DA</span>
                     </div>

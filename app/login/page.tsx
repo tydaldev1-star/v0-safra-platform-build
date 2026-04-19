@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -15,7 +15,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 
 export default function LoginPage() {
   const { t } = useI18n()
-  const { login, user } = useAuth()
+  const { login, user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
@@ -24,15 +24,24 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   // Redirect if already logged in
-  if (user) {
-    if (user.role === "admin") {
-      router.push("/admin")
-    } else if (user.role === "host") {
-      router.push("/host")
-    } else {
-      router.push("/")
+  useEffect(() => {
+    if (user && !authLoading) {
+      if (user.role === "admin") {
+        router.push("/admin")
+      } else if (user.role === "host") {
+        router.push("/host")
+      } else {
+        router.push("/")
+      }
     }
-    return null
+  }, [user, authLoading, router])
+
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

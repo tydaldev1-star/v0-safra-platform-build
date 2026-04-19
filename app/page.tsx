@@ -2,7 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import useSWR from "swr"
 import {
   Search,
   MapPin,
@@ -14,20 +15,22 @@ import {
   ArrowRight,
   Star,
   TrendingUp,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { PropertyCard } from "@/components/property-card"
+import { PropertyCard, Property } from "@/components/property-card"
 import { useI18n } from "@/lib/i18n-context"
-import { MOCK_PROPERTIES } from "@/lib/mock-data"
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const DESTINATIONS = [
-  { name: "Alger", image: "/images/property-6.jpg", count: 48 },
-  { name: "Oran", image: "/images/property-1.jpg", count: 31 },
-  { name: "Béjaïa", image: "/images/property-3.jpg", count: 24 },
-  { name: "Tlemcen", image: "/images/property-2.jpg", count: 19 },
+  { name: "Alger", image: "/images/property-6.jpg" },
+  { name: "Oran", image: "/images/property-1.jpg" },
+  { name: "Béjaïa", image: "/images/property-3.jpg" },
+  { name: "Tlemcen", image: "/images/property-2.jpg" },
 ]
 
 const CATEGORIES = [
@@ -39,16 +42,37 @@ const CATEGORIES = [
 ]
 
 export default function HomePage() {
-  const { t, isRTL } = useI18n()
+  const { t } = useI18n()
   const [searchQuery, setSearchQuery] = useState("")
 
-  const featuredProperties = MOCK_PROPERTIES.slice(0, 6)
+  // Fetch featured properties from API
+  const { data, isLoading } = useSWR<{ properties: Property[]; total: number }>(
+    "/api/properties?limit=6&status=active",
+    fetcher
+  )
+
+  // Fetch destination counts
+  const { data: statsData } = useSWR<{ properties: Property[] }>(
+    "/api/properties?limit=1000&status=active",
+    fetcher
+  )
+
+  const featuredProperties = data?.properties || []
+  
+  // Calculate destination counts
+  const destinationCounts = DESTINATIONS.map((dest) => ({
+    ...dest,
+    count: statsData?.properties?.filter((p) => p.wilaya === dest.name).length || 0,
+  }))
+
+  const totalProperties = statsData?.properties?.length || 0
+  const totalWilayas = new Set(statsData?.properties?.map((p) => p.wilaya)).size || 0
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      {/* ── Hero ── */}
+      {/* Hero */}
       <section className="relative min-h-[600px] flex items-center">
         <div className="absolute inset-0 z-0">
           <Image
@@ -59,13 +83,11 @@ export default function HomePage() {
             priority
             loading="eager"
           />
-          {/* Navy overlay matching brand */}
           <div className="absolute inset-0 bg-brand-navy-dark/65" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full py-20">
           <div className="max-w-2xl">
-            {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-accent/20 border border-accent/30 rounded-full px-4 py-1.5 mb-6">
               <Star className="h-3.5 w-3.5 text-accent fill-accent" />
               <span className="text-white/90 text-xs font-semibold tracking-wide uppercase">
@@ -112,8 +134,8 @@ export default function HomePage() {
             {/* Quick stats */}
             <div className="flex items-center gap-6 mt-6">
               {[
-                { value: "2 000+", label: "Logements" },
-                { value: "48", label: "Wilayas" },
+                { value: `${totalProperties}+`, label: "Logements" },
+                { value: `${totalWilayas}`, label: "Wilayas" },
                 { value: "15 000+", label: "Voyageurs" },
               ].map((stat) => (
                 <div key={stat.label} className="text-white/80">
@@ -126,7 +148,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Categories strip ── */}
+      {/* Categories strip */}
       <section className="py-6 bg-white border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -144,7 +166,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Featured Listings ── */}
+      {/* Featured Listings */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -170,11 +192,23 @@ export default function HomePage() {
             </Button>
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {featuredProperties.map((p) => (
-            <PropertyCard key={p.id} property={p} />
-          ))}
-        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : featuredProperties.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">Aucune annonce disponible pour le moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {featuredProperties.map((p) => (
+              <PropertyCard key={p.id} property={p} />
+            ))}
+          </div>
+        )}
+
         <div className="mt-8 text-center sm:hidden">
           <Link href="/search">
             <Button variant="outline" className="gap-2 border-primary/30 text-primary">
@@ -184,7 +218,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Popular Destinations ── */}
+      {/* Popular Destinations */}
       <section className="py-16 bg-secondary/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-2 mb-2">
@@ -198,7 +232,7 @@ export default function HomePage() {
             Explorez les villes les plus demandées
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            {DESTINATIONS.map((dest) => (
+            {destinationCounts.map((dest) => (
               <Link key={dest.name} href={`/search?location=${dest.name}`}>
                 <div className="relative aspect-[3/4] rounded-2xl overflow-hidden group cursor-pointer shadow-sm">
                   <Image
@@ -222,7 +256,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Why Safra ── */}
+      {/* Why Safra */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 w-full">
         <div className="text-center mb-12">
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 text-balance">
@@ -264,7 +298,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Host CTA ── */}
+      {/* Host CTA */}
       <section className="py-4 px-4 sm:px-6 max-w-7xl mx-auto w-full pb-16">
         <div className="bg-brand-navy rounded-3xl overflow-hidden relative">
           <div className="absolute inset-0 opacity-10">

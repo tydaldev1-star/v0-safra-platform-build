@@ -1,8 +1,18 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import type { PropertyWithCoords } from "@/lib/mock-data"
 import { Locate, Loader2, Navigation, X } from "lucide-react"
+
+export interface PropertyWithCoords {
+  id: string
+  title: string
+  location: string
+  wilaya: string
+  price: number
+  image: string
+  lat: number
+  lng: number
+}
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n-context"
 import Image from "next/image"
