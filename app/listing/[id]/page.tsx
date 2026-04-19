@@ -6,8 +6,14 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
   Star, MapPin, Users, Bed, Wifi, Wind, ParkingMeterIcon as Parking, Tv, Waves, ChefHat,
-  WashingMachine, Home, ChevronLeft, Share, Heart, Calendar, CheckCircle, Shield
+  WashingMachine, Home, ChevronLeft, Share, Heart, Calendar, CheckCircle, Shield, Navigation
 } from "lucide-react"
+
+// Open Google Maps with directions
+function openGoogleMapsDirections(lat: number, lng: number) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+  window.open(url, "_blank")
+}
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -74,13 +80,31 @@ export default function ListingPage() {
                 <span className="text-muted-foreground">({property.reviewCount} {t("listing_reviews")})</span>
               </div>
               <span className="text-muted-foreground">·</span>
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                {property.location}, {property.wilaya}
-              </div>
+              <button 
+                onClick={() => property.lat && property.lng && openGoogleMapsDirections(property.lat, property.lng)}
+                className="flex items-center gap-1 text-muted-foreground hover:text-accent transition-colors group"
+              >
+                <MapPin className="h-4 w-4 group-hover:text-accent" />
+                <span className="underline-offset-2 group-hover:underline">
+                  {property.location}, {property.wilaya}
+                </span>
+                <Navigation className="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
             </div>
           </div>
           <div className="flex gap-2">
+            {/* Directions Button */}
+            {property.lat && property.lng && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 border-accent/30 text-accent hover:bg-accent hover:text-accent-foreground"
+                onClick={() => openGoogleMapsDirections(property.lat!, property.lng!)}
+              >
+                <Navigation className="h-4 w-4" />
+                <span className="hidden sm:inline">Itinéraire</span>
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="gap-2">
               <Share className="h-4 w-4" />
               <span className="hidden sm:inline">Partager</span>

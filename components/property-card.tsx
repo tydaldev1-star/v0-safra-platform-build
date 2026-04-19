@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Star, Heart, MapPin, Bed, Users } from "lucide-react"
+import { Star, Heart, MapPin, Bed, Users, Navigation } from "lucide-react"
 import { useState } from "react"
 import { useI18n } from "@/lib/i18n-context"
 import { Badge } from "@/components/ui/badge"
@@ -28,9 +28,16 @@ export interface Property {
 
 interface PropertyCardProps {
   property: Property
+  showLocationButton?: boolean
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
+// Open Google Maps with directions to property
+function openGoogleMapsDirections(lat: number, lng: number, label?: string) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+  window.open(url, "_blank")
+}
+
+export function PropertyCard({ property, showLocationButton = true }: PropertyCardProps) {
   const { t } = useI18n()
   const [wishlisted, setWishlisted] = useState(false)
 
@@ -64,6 +71,20 @@ export function PropertyCard({ property }: PropertyCardProps) {
             <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground text-xs font-semibold px-2.5 shadow-sm">
               Nouveau
             </Badge>
+          )}
+          {/* Location Button - Opens Google Maps */}
+          {showLocationButton && property.lat && property.lng && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                openGoogleMapsDirections(property.lat!, property.lng!, property.title)
+              }}
+              className="absolute bottom-3 left-3 w-9 h-9 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white hover:scale-105 transition-all shadow-md group"
+              aria-label="Voir sur Google Maps"
+            >
+              <Navigation className="h-4 w-4 text-primary group-hover:text-accent transition-colors" />
+            </button>
           )}
         </div>
 

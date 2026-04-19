@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useState, useEffect } from "react"
 import type { PropertyWithCoords } from "@/lib/mock-data"
-import { Locate, Loader2 } from "lucide-react"
+import { Locate, Loader2, Navigation, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n-context"
+import Image from "next/image"
 
 interface MapViewProps {
   properties: PropertyWithCoords[]
@@ -13,6 +14,12 @@ interface MapViewProps {
   userPosition?: { lat: number; lng: number } | null
   onLocate?: () => void
   locating?: boolean
+}
+
+// Open Google Maps with directions to property
+export function openGoogleMapsDirections(lat: number, lng: number, label?: string) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+  window.open(url, "_blank")
 }
 
 export function MapView({
@@ -24,175 +31,199 @@ export function MapView({
   locating,
 }: MapViewProps) {
   const { t } = useI18n()
-  const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<any>(null)
-  const markersRef = useRef<Map<string, any>>(new Map())
-  const userMarkerRef = useRef<any>(null)
-  const [mapReady, setMapReady] = useState(false)
-  const LRef = useRef<any>(null)
+  const [selectedProperty, setSelectedProperty] = useState<PropertyWithCoords | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
 
-  // Init Leaflet map on client only
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return
+    const checkMobile = () => setIsMobile(window.innerWidth < 640)
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
-    let destroyed = false
-
-    async function initMap() {
-      const L = (await import("leaflet")).default
-      await import("leaflet/dist/leaflet.css")
-      if (destroyed || !mapRef.current) return
-
-      LRef.current = L
-
-      const map = L.map(mapRef.current, {
-        center: [28.0, 2.5],
-        zoom: 5,
-        zoomControl: false,
-      })
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 18,
-      }).addTo(map)
-
-      L.control.zoom({ position: "topright" }).addTo(map)
-
-      mapInstanceRef.current = map
-      if (!destroyed) setMapReady(true)
+  // When activeId changes from parent, update selected property
+  useEffect(() => {
+    if (activeId) {
+      const p = properties.find(pr => pr.id === activeId)
+      if (p) setSelectedProperty(p)
     }
+  }, [activeId, properties])
 
-    initMap()
+  const handleMarkerClick = (p: PropertyWithCoords) => {
+    setSelectedProperty(p)
+    onMarkerClick?.(p.id)
+  }
 
-    return () => {
-      destroyed = true
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove()
-        mapInstanceRef.current = null
+  // Calculate center based on properties
+  const center = properties.length > 0
+    ? {
+        lat: properties.reduce((s, p) => s + p.lat, 0) / properties.length,
+        lng: properties.reduce((s, p) => s + p.lng, 0) / properties.length
       }
-    }
-  }, [])
+    : { lat: 28.0, lng: 2.5 }
 
-  // Helper to create price-pill marker icon
-  const createMarkerIcon = useCallback((L: any, price: number, isActive: boolean) => {
-    const html = `
-      <div style="
-        background:${isActive ? "#F4872A" : "#2D4A8A"};
-        color:white;
-        border:2.5px solid white;
-        border-radius:20px;
-        padding:4px 10px;
-        font-size:12px;
-        font-weight:700;
-        white-space:nowrap;
-        box-shadow:0 2px 12px rgba(0,0,0,0.25);
-        cursor:pointer;
-        transform:${isActive ? "scale(1.15)" : "scale(1)"};
-        transition:transform 0.15s;
-      ">${price.toLocaleString()} DA</div>`
-    return L.divIcon({ html, className: "", iconAnchor: [40, 16] })
-  }, [])
-
-  // Render / update property markers
-  useEffect(() => {
-    if (!mapReady || !mapInstanceRef.current || !LRef.current) return
-    const L = LRef.current
-    const map = mapInstanceRef.current
-
-    markersRef.current.forEach((m) => m.remove())
-    markersRef.current.clear()
-
-    properties.forEach((p) => {
-      const isActive = p.id === activeId
-      const icon = createMarkerIcon(L, p.price, isActive)
-
-      const marker = L.marker([p.lat, p.lng], { icon })
-        .addTo(map)
-        .bindPopup(
-          `<div style="min-width:190px;font-family:sans-serif;">
-            <img src="${p.image}" style="width:100%;height:88px;object-fit:cover;border-radius:8px;margin-bottom:7px;" />
-            <div style="font-weight:700;font-size:13px;margin-bottom:3px;color:#1a1a1a;line-height:1.3;">${p.title}</div>
-            <div style="font-size:12px;color:#777;margin-bottom:6px;">
-              <span style="display:inline-flex;align-items:center;gap:3px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F4872A" stroke-width="2.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-                ${p.location}, ${p.wilaya}
-              </span>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <span style="font-weight:700;color:#2D4A8A;font-size:14px;">${p.price.toLocaleString()} <span style="font-size:11px;color:#999;font-weight:400">DA / nuit</span></span>
-              <span style="background:#F4872A;color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;">★ ${p.rating}</span>
-            </div>
-          </div>`,
-          { maxWidth: 220, className: "safra-popup" }
-        )
-
-      marker.on("click", () => onMarkerClick?.(p.id))
-      markersRef.current.set(p.id, marker)
-    })
-  }, [mapReady, properties, activeId, createMarkerIcon, onMarkerClick])
-
-  // Fly to active marker
-  useEffect(() => {
-    if (!mapReady || !mapInstanceRef.current || !activeId) return
-    const prop = properties.find((p) => p.id === activeId)
-    if (prop) {
-      mapInstanceRef.current.flyTo([prop.lat, prop.lng], 12, { duration: 1 })
-      const marker = markersRef.current.get(activeId)
-      if (marker) setTimeout(() => marker.openPopup(), 800)
-    }
-  }, [activeId, mapReady, properties])
-
-  // User position marker
-  useEffect(() => {
-    if (!mapReady || !mapInstanceRef.current || !LRef.current) return
-    const L = LRef.current
-    const map = mapInstanceRef.current
-
-    if (userMarkerRef.current) {
-      userMarkerRef.current.remove()
-      userMarkerRef.current = null
-    }
-
-    if (userPosition) {
-      const html = `
-        <div style="position:relative;width:20px;height:20px;">
-          <div style="
-            position:absolute;inset:0;
-            background:#3B82F6;
-            border-radius:50%;
-            border:3px solid white;
-            box-shadow:0 0 0 4px rgba(59,130,246,0.3);
-          "></div>
-        </div>`
-      const icon = L.divIcon({ html, className: "", iconAnchor: [10, 10] })
-      userMarkerRef.current = L.marker([userPosition.lat, userPosition.lng], { icon })
-        .addTo(map)
-        .bindPopup(`<b style="font-size:13px;color:#1a1a1a;">${t("map_your_location")}</b>`)
-      map.flyTo([userPosition.lat, userPosition.lng], 12, { duration: 1.5 })
-    }
-  }, [userPosition, mapReady, t])
+  // Build Google Maps Static API URL with markers (no API key needed for embed)
+  // Using iframe embed with search query for the area
+  const mapQuery = properties.length > 0 
+    ? encodeURIComponent(`${properties[0].wilaya}, Algeria`)
+    : "Algeria"
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden border border-border shadow-md">
-      <div ref={mapRef} className="w-full h-full" />
+    <div className="relative w-full h-full rounded-2xl overflow-hidden border border-border shadow-md bg-secondary">
+      {/* Google Maps Embed - simple search-based embed (no API key) */}
+      <iframe
+        src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d500000!2d${center.lng}!3d${center.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sfr!2sdz!4v1700000000000!5m2!1sfr!2sdz`}
+        className="absolute inset-0 w-full h-full border-0"
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        title="Safra Map"
+      />
 
+      {/* Property Markers Overlay */}
+      <div className="absolute inset-0 pointer-events-none p-4">
+        <div className="relative w-full h-full">
+          {properties.map((p) => {
+            const isActive = p.id === activeId || p.id === selectedProperty?.id
+            // Simple positioning relative to center (for visual demo)
+            const offsetX = ((p.lng - center.lng) * 15) // Scale factor
+            const offsetY = ((center.lat - p.lat) * 15)
+            
+            return (
+              <button
+                key={p.id}
+                className={`
+                  pointer-events-auto absolute transform -translate-x-1/2 -translate-y-1/2 
+                  transition-all duration-200 cursor-pointer z-10
+                  ${isActive ? "z-20 scale-110" : "hover:scale-105 hover:z-15"}
+                `}
+                style={{
+                  left: `calc(50% + ${offsetX}%)`,
+                  top: `calc(50% + ${offsetY}%)`,
+                }}
+                onClick={() => handleMarkerClick(p)}
+              >
+                <div
+                  className={`
+                    px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold text-white 
+                    shadow-lg border-2 border-white whitespace-nowrap
+                    ${isActive ? "bg-accent" : "bg-primary hover:bg-primary/90"}
+                  `}
+                >
+                  {(p.price / 1000).toFixed(1)}k DA
+                </div>
+                {/* Triangle pointer */}
+                <div
+                  className={`
+                    w-0 h-0 mx-auto border-l-[5px] border-r-[5px] border-t-[5px]
+                    border-l-transparent border-r-transparent
+                    ${isActive ? "border-t-accent" : "border-t-primary"}
+                  `}
+                />
+              </button>
+            )
+          })}
+
+          {/* User position marker */}
+          {userPosition && (
+            <div
+              className="absolute w-4 h-4 z-30 pointer-events-none"
+              style={{
+                left: `calc(50% + ${(userPosition.lng - center.lng) * 15}%)`,
+                top: `calc(50% + ${(center.lat - userPosition.lat) * 15}%)`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <div className="w-full h-full bg-blue-500 rounded-full border-2 border-white shadow-lg">
+                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-50" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Property Info Card (when selected) */}
+      {selectedProperty && (
+        <div 
+          className={`
+            absolute bg-white rounded-xl shadow-xl border border-border z-30 
+            animate-in slide-in-from-bottom-4 duration-200
+            ${isMobile 
+              ? "bottom-16 left-2 right-2 p-3" 
+              : "bottom-16 left-1/2 -translate-x-1/2 w-[320px] p-3"
+            }
+          `}
+        >
+          <button
+            className="absolute -top-2 -right-2 w-6 h-6 bg-foreground text-background rounded-full shadow-md flex items-center justify-center hover:bg-foreground/80 transition-colors"
+            onClick={() => setSelectedProperty(null)}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+          <div className="flex gap-3">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shrink-0 bg-muted">
+              <Image
+                src={selectedProperty.image}
+                alt={selectedProperty.title}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+              <div>
+                <h4 className="font-semibold text-xs sm:text-sm text-foreground line-clamp-2 leading-tight">
+                  {selectedProperty.title}
+                </h4>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+                  {selectedProperty.location}, {selectedProperty.wilaya}
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-2">
+                <span className="font-bold text-primary text-sm sm:text-base">
+                  {selectedProperty.price.toLocaleString()} DA
+                  <span className="text-[10px] sm:text-xs text-muted-foreground font-normal ml-1">/ nuit</span>
+                </span>
+                <Button
+                  size="sm"
+                  className="h-7 sm:h-8 px-2 sm:px-3 gap-1 sm:gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg text-[10px] sm:text-xs"
+                  onClick={() => openGoogleMapsDirections(selectedProperty.lat, selectedProperty.lng, selectedProperty.title)}
+                >
+                  <Navigation className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span>Itinéraire</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Locate Me Button */}
       {onLocate && (
-        <div className="absolute bottom-4 right-4 z-[1000]">
+        <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 z-20">
           <Button
             size="sm"
             onClick={onLocate}
             disabled={locating}
             variant="outline"
-            className="gap-2 bg-white text-foreground border-border hover:bg-secondary shadow-md rounded-xl"
+            className="gap-1.5 sm:gap-2 bg-white text-foreground border-border hover:bg-secondary shadow-lg rounded-xl h-8 sm:h-9 px-2.5 sm:px-3"
           >
             {locating ? (
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-primary" />
             ) : (
-              <Locate className="h-4 w-4 text-primary" />
+              <Locate className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
             )}
-            <span className="text-xs font-semibold">{t("map_locate_me")}</span>
+            <span className="text-[10px] sm:text-xs font-semibold">{t("map_locate_me")}</span>
           </Button>
         </div>
       )}
+
+      {/* Property Count Badge */}
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-20">
+        <div className="bg-white/95 backdrop-blur-sm rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-md border border-border">
+          <span className="text-xs sm:text-sm font-bold text-foreground">{properties.length}</span>
+          <span className="text-[10px] sm:text-xs text-muted-foreground ml-1">{t("stats_properties")}</span>
+        </div>
+      </div>
     </div>
   )
 }
