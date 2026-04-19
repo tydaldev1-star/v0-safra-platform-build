@@ -32,7 +32,8 @@ export default function RegisterPage() {
                 alt="Safra"
                 width={120}
                 height={44}
-                className="h-10 w-auto object-contain"
+                className="h-10 object-contain"
+                style={{ width: "auto" }}
               />
             </Link>
             <LanguageSwitcher />

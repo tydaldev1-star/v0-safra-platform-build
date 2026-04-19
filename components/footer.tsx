@@ -21,7 +21,8 @@ export function Footer() {
                 alt="Safra"
                 width={130}
                 height={48}
-                className="h-12 w-auto object-contain brightness-0 invert"
+                className="h-12 object-contain brightness-0 invert"
+                style={{ width: "auto" }}
               />
             </Link>
             <p className="text-white/60 text-sm leading-relaxed max-w-xs mb-5">

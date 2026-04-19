@@ -37,7 +37,8 @@ export function Navbar({ userRole = null }: NavbarProps) {
               alt="Safra Location de Vacances"
               width={140}
               height={52}
-              className="h-11 w-auto object-contain"
+              className="h-11 object-contain"
+              style={{ width: "auto" }}
               priority
             />
           </Link>
