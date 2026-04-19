@@ -47,14 +47,12 @@ export async function GET() {
     ])
 
     return NextResponse.json({
-      stats: {
-        totalUsers: totalUsers[0]?.count || 0,
-        totalProperties: totalProperties[0]?.count || 0,
-        totalBookings: totalBookings[0]?.count || 0,
-        pendingHosts: pendingHosts[0]?.count || 0,
-        pendingProperties: pendingProperties[0]?.count || 0,
-        totalRevenue: revenue[0]?.total || 0,
-      },
+      totalUsers: totalUsers[0]?.count || 0,
+      totalProperties: totalProperties[0]?.count || 0,
+      totalBookings: totalBookings[0]?.count || 0,
+      pendingHosts: pendingHosts[0]?.count || 0,
+      pendingProperties: pendingProperties[0]?.count || 0,
+      totalRevenue: Number(revenue[0]?.total) || 0,
       recentBookings,
     })
   } catch (error) {

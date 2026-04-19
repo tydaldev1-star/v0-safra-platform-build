@@ -123,11 +123,17 @@ export default function AdminDashboard() {
   // Hosts with pending documents
   const pendingDocHosts = hosts.filter((h) => h.id_document_url && h.verification_status === "pending")
 
+  function formatAmount(val: number): string {
+    if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M DA`
+    if (val >= 1_000) return `${(val / 1_000).toFixed(0)}k DA`
+    return `${val.toLocaleString("fr-DZ")} DA`
+  }
+
   const globalStats = [
-    { label: "Utilisateurs", value: String(stats.totalUsers), icon: <Users className="h-5 w-5" />, sub: `${clients.length} clients · ${hosts.length} hôtes`, color: "text-accent" },
-    { label: "Annonces", value: String(stats.totalProperties), icon: <Home className="h-5 w-5" />, sub: `${stats.pendingProperties} en attente`, color: "text-primary" },
-    { label: "Réservations", value: String(stats.totalBookings), icon: <Calendar className="h-5 w-5" />, sub: "", color: "text-foreground" },
-    { label: "Revenus (10%)", value: `${((stats.totalRevenue ?? 0) / 1000).toFixed(0)}k DA`, icon: <DollarSign className="h-5 w-5" />, sub: "Commission plateforme", color: "text-gold" },
+    { label: "Utilisateurs", value: String(stats.totalUsers || 0), icon: <Users className="h-5 w-5" />, sub: `${clients.length} clients · ${hosts.length} hôtes`, color: "text-accent" },
+    { label: "Annonces", value: String(stats.totalProperties || 0), icon: <Home className="h-5 w-5" />, sub: `${stats.pendingProperties || 0} en attente`, color: "text-primary" },
+    { label: "Réservations", value: String(stats.totalBookings || 0), icon: <Calendar className="h-5 w-5" />, sub: `${stats.pendingHosts || 0} hôtes en attente`, color: "text-foreground" },
+    { label: "Revenus (10%)", value: formatAmount(stats.totalRevenue ?? 0), icon: <DollarSign className="h-5 w-5" />, sub: "Commission plateforme", color: "text-gold" },
   ]
 
   async function handleUserAction(userId: number, payload: object) {
