@@ -1,5 +1,10 @@
 import nodemailer from "nodemailer"
 
+// Debug: Log SMTP config on module load
+console.log("[v0] SMTP_USER:", process.env.SMTP_USER || "NOT SET")
+console.log("[v0] SMTP_PASSWORD length:", process.env.SMTP_PASSWORD?.length || 0)
+console.log("[v0] SMTP_HOST:", process.env.SMTP_HOST || "NOT SET")
+
 // SMTP Configuration from environment variables
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
