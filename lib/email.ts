@@ -1,20 +1,17 @@
 import nodemailer from "nodemailer"
 
-// Debug: Log SMTP config on module load
-console.log("[v0] SMTP_USER:", process.env.SMTP_USER || "NOT SET")
-console.log("[v0] SMTP_PASSWORD length:", process.env.SMTP_PASSWORD?.length || 0)
-console.log("[v0] SMTP_HOST:", process.env.SMTP_HOST || "NOT SET")
-
-// SMTP Configuration from environment variables
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-})
+// Lazy transporter — created on first use, not at module load
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || "587"),
+    secure: process.env.SMTP_SECURE === "true",
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
+    },
+  })
+}
 
 interface SendEmailOptions {
   to: string
@@ -26,6 +23,7 @@ interface SendEmailOptions {
 export async function sendEmail({ to, subject, html, text }: SendEmailOptions) {
   const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER
   const fromName = process.env.SMTP_FROM_NAME || "Safra"
+  const transporter = createTransporter()
 
   try {
     const info = await transporter.sendMail({

@@ -4,15 +4,6 @@ import { sendEmail, generateOTP, getOTPEmailTemplate } from "@/lib/email"
 import bcrypt from "bcryptjs"
 
 export async function POST(request: NextRequest) {
-  // Debug SMTP config
-  console.log("[v0] SMTP ENV CHECK:", {
-    host: process.env.SMTP_HOST || "NOT SET",
-    port: process.env.SMTP_PORT || "NOT SET",
-    user: process.env.SMTP_USER || "NOT SET",
-    passLen: process.env.SMTP_PASSWORD?.length || 0,
-    fromEmail: process.env.SMTP_FROM_EMAIL || "NOT SET",
-  })
-
   try {
     const body = await request.json()
     const { email, password, fullName, phone, role, locale } = body
