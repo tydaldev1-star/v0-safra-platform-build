@@ -3,7 +3,9 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useI18n } from "@/lib/i18n-context"
+import { useAuth } from "@/lib/auth-context"
 import { LanguageSwitcher } from "./language-switcher"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,17 +15,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Menu, X, User, Home, Shield, ChevronDown, Bell } from "lucide-react"
+import { Menu, X, User, Home, Shield, ChevronDown, Bell, LogOut } from "lucide-react"
 
-type UserRole = "guest" | "host" | "admin" | null
-
-interface NavbarProps {
-  userRole?: UserRole
-}
-
-export function Navbar({ userRole = null }: NavbarProps) {
+export function Navbar() {
   const { t, isRTL } = useI18n()
+  const { user, logout, isLoading } = useAuth()
+  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const userRole = user?.role || null
+
+  const handleLogout = async () => {
+    await logout()
+    router.push("/")
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
@@ -140,10 +145,12 @@ export function Navbar({ userRole = null }: NavbarProps) {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/" className="cursor-pointer text-destructive font-medium">
-                        {t("nav_logout")}
-                      </Link>
+                    <DropdownMenuItem 
+                      onClick={handleLogout}
+                      className="cursor-pointer text-destructive font-medium gap-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {t("nav_logout")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -199,24 +206,53 @@ export function Navbar({ userRole = null }: NavbarProps) {
                 {t("footer_host")}
               </Button>
             </Link>
-            {!userRole && (
-              <>
-                <div className="border-t border-border pt-3 mt-2 flex flex-col gap-2 px-1">
-                  <Link href="/login" onClick={() => setMobileOpen(false)}>
-                    <Button variant="outline" size="sm" className="w-full font-medium">
-                      {t("nav_login")}
+            {userRole ? (
+              <div className="border-t border-border pt-3 mt-2 flex flex-col gap-1">
+                {userRole === "host" && (
+                  <Link href="/host" onClick={() => setMobileOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start font-medium gap-2">
+                      <Home className="h-4 w-4" />
+                      {t("nav_host_dashboard")}
                     </Button>
                   </Link>
-                  <Link href="/register" onClick={() => setMobileOpen(false)}>
-                    <Button
-                      size="sm"
-                      className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold rounded-full"
-                    >
-                      {t("nav_register")}
+                )}
+                {userRole === "admin" && (
+                  <Link href="/admin" onClick={() => setMobileOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start font-medium gap-2">
+                      <Shield className="h-4 w-4" />
+                      {t("nav_admin")}
                     </Button>
                   </Link>
-                </div>
-              </>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start font-medium gap-2 text-destructive hover:text-destructive"
+                  onClick={() => {
+                    setMobileOpen(false)
+                    handleLogout()
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t("nav_logout")}
+                </Button>
+              </div>
+            ) : (
+              <div className="border-t border-border pt-3 mt-2 flex flex-col gap-2 px-1">
+                <Link href="/login" onClick={() => setMobileOpen(false)}>
+                  <Button variant="outline" size="sm" className="w-full font-medium">
+                    {t("nav_login")}
+                  </Button>
+                </Link>
+                <Link href="/register" onClick={() => setMobileOpen(false)}>
+                  <Button
+                    size="sm"
+                    className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold rounded-full"
+                  >
+                    {t("nav_register")}
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
         )}
