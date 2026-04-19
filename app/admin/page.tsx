@@ -124,9 +124,7 @@ export default function AdminDashboard() {
   const pendingDocHosts = hosts.filter((h) => h.id_document_url && h.verification_status === "pending")
 
   function formatAmount(val: number): string {
-    if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M DA`
-    if (val >= 1_000) return `${(val / 1_000).toFixed(0)}k DA`
-    return `${val.toLocaleString("fr-DZ")} DA`
+    return `${Math.round(val).toLocaleString("fr-DZ")} DA`
   }
 
   const globalStats = [
