@@ -96,15 +96,15 @@ export default function AdminDashboard() {
     )
   }
 
-  const stats = statsData || { totalUsers: 0, totalProperties: 0, totalBookings: 0, totalRevenue: 0, pendingHosts: 0, pendingProperties: 0 }
-  const hosts = usersData?.users?.filter((u) => u.role === "host") || []
+  const stats = statsData ?? { totalUsers: 0, totalProperties: 0, totalBookings: 0, totalRevenue: 0, pendingHosts: 0, pendingProperties: 0 }
+  const hosts = usersData?.users?.filter((u: { role: string }) => u.role === "host") || []
   const properties = propertiesData?.properties || []
 
   const globalStats = [
-    { label: "Utilisateurs totaux", value: stats.totalUsers.toString(), icon: <Users className="h-5 w-5" />, change: "", color: "text-accent" },
-    { label: "Annonces actives", value: stats.totalProperties.toString(), icon: <Home className="h-5 w-5" />, change: `${stats.pendingProperties} en attente`, color: "text-primary" },
-    { label: "Réservations totales", value: stats.totalBookings.toString(), icon: <Calendar className="h-5 w-5" />, change: "", color: "text-foreground" },
-    { label: "Revenus plateforme", value: `${(stats.totalRevenue / 1000).toFixed(0)}k DA`, icon: <DollarSign className="h-5 w-5" />, change: "10% commission", color: "text-gold" },
+    { label: "Utilisateurs totaux", value: String(stats.totalUsers ?? 0), icon: <Users className="h-5 w-5" />, change: "", color: "text-accent" },
+    { label: "Annonces actives", value: String(stats.totalProperties ?? 0), icon: <Home className="h-5 w-5" />, change: `${stats.pendingProperties ?? 0} en attente`, color: "text-primary" },
+    { label: "Réservations totales", value: String(stats.totalBookings ?? 0), icon: <Calendar className="h-5 w-5" />, change: "", color: "text-foreground" },
+    { label: "Revenus plateforme", value: `${((stats.totalRevenue ?? 0) / 1000).toFixed(0)}k DA`, icon: <DollarSign className="h-5 w-5" />, change: "10% commission", color: "text-gold" },
   ]
 
   const handleValidateHost = async (userId: number, status: "approved" | "rejected") => {
@@ -383,9 +383,9 @@ export default function AdminDashboard() {
           <TabsContent value="payments">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               {[
-                { label: "Revenus totaux", value: `${stats.totalRevenue.toLocaleString()} DA`, sub: "Depuis le lancement" },
-                { label: "Commissions collectées", value: `${Math.round(stats.totalRevenue * 0.1).toLocaleString()} DA`, sub: "10% par réservation" },
-                { label: "Réservations", value: stats.totalBookings.toString(), sub: "Total" },
+                { label: "Revenus totaux", value: `${(stats.totalRevenue ?? 0).toLocaleString()} DA`, sub: "Depuis le lancement" },
+                { label: "Commissions collectées", value: `${Math.round((stats.totalRevenue ?? 0) * 0.1).toLocaleString()} DA`, sub: "10% par réservation" },
+                { label: "Réservations", value: String(stats.totalBookings ?? 0), sub: "Total" },
               ].map((s, i) => (
                 <div key={i} className="bg-card border border-border rounded-xl p-5">
                   <p className="text-2xl font-bold text-foreground">{s.value}</p>

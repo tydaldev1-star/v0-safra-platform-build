@@ -116,8 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     sql += " GROUP BY p.id ORDER BY p.is_featured DESC, p.created_at DESC"
-    sql += ` LIMIT ? OFFSET ?`
-    params.push(limit, offset)
+    sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`
 
     const properties = await query<PropertyRow[]>(sql, params)
 
