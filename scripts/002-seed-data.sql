@@ -33,11 +33,14 @@ INSERT INTO amenities (code, name_fr, name_en, name_ar, icon) VALUES
 ('sea_view', 'Vue sur mer', 'Sea View', 'إطلالة على البحر', 'Waves')
 ON DUPLICATE KEY UPDATE name_fr = VALUES(name_fr);
 
--- Insert Admin User (password: admin123 - hashed with bcrypt)
+-- Insert Admin User
+-- Email: admin@safra.dz
+-- Password: Safra@2026#
+-- Hash generated with bcrypt (cost factor 10)
 INSERT INTO users (email, password_hash, full_name, phone, role, is_verified, verification_status) VALUES
-('admin@safra.dz', '$2b$10$rQZ8K5K5K5K5K5K5K5K5KuXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', 'Admin Safra', '+213555000000', 'admin', TRUE, 'approved')
-ON DUPLICATE KEY UPDATE email = VALUES(email);
-
--- Note: The admin password hash above is a placeholder. 
--- You should update it with a real bcrypt hash of your desired password.
--- Use: const hash = await bcrypt.hash('your-password', 10)
+('admin@safra.dz', '$2b$10$whlXupObxHZYfj2dQnSmvuYK9JPxUmY2hyJGr7wZcHkNaUrDJnls6', 'Admin Safra', '+213555000000', 'admin', TRUE, 'approved')
+ON DUPLICATE KEY UPDATE 
+  password_hash = VALUES(password_hash),
+  role = VALUES(role),
+  is_verified = VALUES(is_verified),
+  verification_status = VALUES(verification_status);
