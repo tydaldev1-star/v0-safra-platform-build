@@ -9,20 +9,25 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get host's properties
-    const properties = await query<{ id: number; rating: number; status: string }[]>(
-      "SELECT id, rating, status FROM properties WHERE host_id = ?",
+    // Get host's properties (no rating column on properties table)
+    const properties = await query<{ id: number; status: string }[]>(
+      "SELECT id, status FROM properties WHERE host_id = ?",
       [user.id]
     )
 
     const totalProperties = properties.filter((p) => p.status === "active").length
     const propertyIds = properties.map((p) => p.id)
 
-    // Average rating
-    const ratings = properties.filter((p) => p.rating).map((p) => Number(p.rating))
-    const averageRating = ratings.length > 0
-      ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
-      : 0
+    // Average rating from reviews table
+    let averageRating = 0
+    if (propertyIds.length > 0) {
+      const placeholders = propertyIds.map(() => "?").join(",")
+      const ratingResult = await query<{ avg_rating: number }[]>(
+        `SELECT COALESCE(AVG(rating), 0) AS avg_rating FROM reviews WHERE property_id IN (${placeholders})`,
+        propertyIds
+      )
+      averageRating = Number(ratingResult[0]?.avg_rating) || 0
+    }
 
     let totalRevenue = 0
     let activeBookings = 0
