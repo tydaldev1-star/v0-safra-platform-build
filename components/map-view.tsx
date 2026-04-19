@@ -56,27 +56,23 @@ export function MapView({
       // Import Leaflet CSS
       await import("leaflet/dist/leaflet.css")
 
-      // Calculate center and bounds
-      const center = properties.length > 0
-        ? {
-            lat: properties.reduce((s, p) => s + p.lat, 0) / properties.length,
-            lng: properties.reduce((s, p) => s + p.lng, 0) / properties.length
-          }
-        : { lat: 28.0, lng: 2.5 }
+      // Algeria center coordinates
+      const algeriaCenter = { lat: 28.0339, lng: 1.6596 }
 
-      // Create map
+      // Create map centered on Algeria
       const map = L.map(mapRef.current!, {
-        center: [center.lat, center.lng],
-        zoom: properties.length > 0 ? 6 : 5,
+        center: [algeriaCenter.lat, algeriaCenter.lng],
+        zoom: 5,
         zoomControl: false,
         attributionControl: true,
+        minZoom: 4,
+        maxZoom: 18,
       })
 
-      // Add Google Maps tile layer (no API key needed)
-      L.tileLayer("https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
-        maxZoom: 20,
-        subdomains: ["mt0", "mt1", "mt2", "mt3"],
-        attribution: "&copy; Google Maps",
+      // Add OpenStreetMap tile layer (clean Carto style)
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       }).addTo(map)
 
       // Add zoom control to bottom right
@@ -84,10 +80,10 @@ export function MapView({
 
       leafletMapRef.current = map
 
-      // Fit bounds to show all properties
-      if (properties.length > 1) {
+      // Fit bounds to show all properties in Algeria
+      if (properties.length > 0) {
         const bounds = L.latLngBounds(properties.map(p => [p.lat, p.lng]))
-        map.fitBounds(bounds, { padding: [50, 50] })
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 12 })
       }
 
       setMapReady(true)
