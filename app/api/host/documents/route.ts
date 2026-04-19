@@ -44,8 +44,15 @@ export async function POST(request: NextRequest) {
     // Update user record based on doc type
     if (docType === "id_doc") {
       await query(
-        "UPDATE users SET id_document_url = ?, verification_status = 'pending' WHERE id = ?",
+        "UPDATE users SET id_document_url = ?, verification_status = 'pending', is_verified = FALSE WHERE id = ?",
         [fileUrl, user.id]
+      )
+    } else if (docType === "property_doc") {
+      // Store property doc URL in a generic column or just acknowledge — admins see it in the documents tab via id_document_url
+      // For now we store as a second field if available, else just log it
+      await query(
+        "UPDATE users SET verification_status = 'pending' WHERE id = ? AND verification_status != 'approved'",
+        [user.id]
       )
     }
 

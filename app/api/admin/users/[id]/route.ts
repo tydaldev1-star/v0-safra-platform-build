@@ -17,7 +17,7 @@ export async function PATCH(
     const { id } = await params
     const data = await request.json()
 
-    const allowedFields = ["role", "is_verified", "verification_status"]
+    const allowedFields = ["role", "is_verified", "verification_status", "phone"]
     const updates: string[] = []
     const values: any[] = []
 
