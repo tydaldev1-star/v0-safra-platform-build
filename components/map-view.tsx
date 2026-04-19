@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { PropertyWithCoords } from "@/lib/mock-data"
 import { Locate, Loader2, Navigation, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -31,8 +31,13 @@ export function MapView({
   locating,
 }: MapViewProps) {
   const { t } = useI18n()
+  const mapRef = useRef<HTMLDivElement>(null)
+  const leafletMapRef = useRef<any>(null)
+  const markersRef = useRef<Map<string, any>>(new Map())
+  const userMarkerRef = useRef<any>(null)
   const [selectedProperty, setSelectedProperty] = useState<PropertyWithCoords | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [mapReady, setMapReady] = useState(false)
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640)
@@ -41,112 +46,257 @@ export function MapView({
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
-  // When activeId changes from parent, update selected property
+  // Initialize Leaflet map
   useEffect(() => {
-    if (activeId) {
-      const p = properties.find(pr => pr.id === activeId)
-      if (p) setSelectedProperty(p)
-    }
-  }, [activeId, properties])
+    if (!mapRef.current || leafletMapRef.current) return
 
-  const handleMarkerClick = (p: PropertyWithCoords) => {
-    setSelectedProperty(p)
-    onMarkerClick?.(p.id)
-  }
+    const initMap = async () => {
+      const L = (await import("leaflet")).default
+      
+      // Import Leaflet CSS
+      await import("leaflet/dist/leaflet.css")
 
-  // Calculate center based on properties
-  const center = properties.length > 0
-    ? {
-        lat: properties.reduce((s, p) => s + p.lat, 0) / properties.length,
-        lng: properties.reduce((s, p) => s + p.lng, 0) / properties.length
+      // Calculate center and bounds
+      const center = properties.length > 0
+        ? {
+            lat: properties.reduce((s, p) => s + p.lat, 0) / properties.length,
+            lng: properties.reduce((s, p) => s + p.lng, 0) / properties.length
+          }
+        : { lat: 28.0, lng: 2.5 }
+
+      // Create map
+      const map = L.map(mapRef.current!, {
+        center: [center.lat, center.lng],
+        zoom: properties.length > 0 ? 6 : 5,
+        zoomControl: false,
+        attributionControl: true,
+      })
+
+      // Add Google Maps tile layer (no API key needed)
+      L.tileLayer("https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+        maxZoom: 20,
+        subdomains: ["mt0", "mt1", "mt2", "mt3"],
+        attribution: "&copy; Google Maps",
+      }).addTo(map)
+
+      // Add zoom control to bottom right
+      L.control.zoom({ position: "bottomright" }).addTo(map)
+
+      leafletMapRef.current = map
+
+      // Fit bounds to show all properties
+      if (properties.length > 1) {
+        const bounds = L.latLngBounds(properties.map(p => [p.lat, p.lng]))
+        map.fitBounds(bounds, { padding: [50, 50] })
       }
-    : { lat: 28.0, lng: 2.5 }
 
-  // Build Google Maps Static API URL with markers (no API key needed for embed)
-  // Using iframe embed with search query for the area
-  const mapQuery = properties.length > 0 
-    ? encodeURIComponent(`${properties[0].wilaya}, Algeria`)
-    : "Algeria"
+      setMapReady(true)
+    }
+
+    initMap()
+
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove()
+        leafletMapRef.current = null
+      }
+    }
+  }, [])
+
+  // Add/update markers when properties or activeId changes
+  useEffect(() => {
+    if (!leafletMapRef.current || !mapReady) return
+
+    const addMarkers = async () => {
+      const L = (await import("leaflet")).default
+
+      // Clear existing markers
+      markersRef.current.forEach(marker => marker.remove())
+      markersRef.current.clear()
+
+      // Add markers for each property
+      properties.forEach((p) => {
+        const isActive = p.id === activeId || p.id === selectedProperty?.id
+
+        // Create custom icon using divIcon
+        const icon = L.divIcon({
+          className: "custom-price-marker",
+          html: `
+            <div class="price-pill ${isActive ? "active" : ""}">
+              <span>${(p.price / 1000).toFixed(1)}k DA</span>
+              <div class="price-pill-arrow ${isActive ? "active" : ""}"></div>
+            </div>
+          `,
+          iconSize: [80, 40],
+          iconAnchor: [40, 40],
+        })
+
+        const marker = L.marker([p.lat, p.lng], { icon })
+          .addTo(leafletMapRef.current!)
+          .on("click", () => {
+            setSelectedProperty(p)
+            onMarkerClick?.(p.id)
+          })
+
+        markersRef.current.set(p.id, marker)
+      })
+    }
+
+    addMarkers()
+  }, [properties, activeId, selectedProperty?.id, mapReady, onMarkerClick])
+
+  // Update user position marker
+  useEffect(() => {
+    if (!leafletMapRef.current || !mapReady) return
+
+    const updateUserMarker = async () => {
+      const L = (await import("leaflet")).default
+
+      // Remove existing user marker
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove()
+        userMarkerRef.current = null
+      }
+
+      // Add new user marker if position exists
+      if (userPosition) {
+        const userIcon = L.divIcon({
+          className: "user-location-marker",
+          html: `
+            <div class="user-dot">
+              <div class="user-dot-ping"></div>
+            </div>
+          `,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+        })
+
+        userMarkerRef.current = L.marker([userPosition.lat, userPosition.lng], { icon: userIcon })
+          .addTo(leafletMapRef.current!)
+
+        // Fly to user position
+        leafletMapRef.current.flyTo([userPosition.lat, userPosition.lng], 10, {
+          duration: 1.5,
+        })
+      }
+    }
+
+    updateUserMarker()
+  }, [userPosition, mapReady])
+
+  // When activeId changes from parent, fly to that property
+  useEffect(() => {
+    if (!leafletMapRef.current || !mapReady || !activeId) return
+
+    const p = properties.find(pr => pr.id === activeId)
+    if (p) {
+      setSelectedProperty(p)
+      leafletMapRef.current.flyTo([p.lat, p.lng], 10, { duration: 0.8 })
+    }
+  }, [activeId, properties, mapReady])
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden border border-border shadow-md bg-secondary">
-      {/* Google Maps Embed - simple search-based embed (no API key) */}
-      <iframe
-        src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d500000!2d${center.lng}!3d${center.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sfr!2sdz!4v1700000000000!5m2!1sfr!2sdz`}
-        className="absolute inset-0 w-full h-full border-0"
-        allowFullScreen
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        title="Safra Map"
-      />
+      {/* Leaflet Map Container */}
+      <div ref={mapRef} className="absolute inset-0 w-full h-full z-0" />
 
-      {/* Property Markers Overlay */}
-      <div className="absolute inset-0 pointer-events-none p-4">
-        <div className="relative w-full h-full">
-          {properties.map((p) => {
-            const isActive = p.id === activeId || p.id === selectedProperty?.id
-            // Simple positioning relative to center (for visual demo)
-            const offsetX = ((p.lng - center.lng) * 15) // Scale factor
-            const offsetY = ((center.lat - p.lat) * 15)
-            
-            return (
-              <button
-                key={p.id}
-                className={`
-                  pointer-events-auto absolute transform -translate-x-1/2 -translate-y-1/2 
-                  transition-all duration-200 cursor-pointer z-10
-                  ${isActive ? "z-20 scale-110" : "hover:scale-105 hover:z-15"}
-                `}
-                style={{
-                  left: `calc(50% + ${offsetX}%)`,
-                  top: `calc(50% + ${offsetY}%)`,
-                }}
-                onClick={() => handleMarkerClick(p)}
-              >
-                <div
-                  className={`
-                    px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold text-white 
-                    shadow-lg border-2 border-white whitespace-nowrap
-                    ${isActive ? "bg-accent" : "bg-primary hover:bg-primary/90"}
-                  `}
-                >
-                  {(p.price / 1000).toFixed(1)}k DA
-                </div>
-                {/* Triangle pointer */}
-                <div
-                  className={`
-                    w-0 h-0 mx-auto border-l-[5px] border-r-[5px] border-t-[5px]
-                    border-l-transparent border-r-transparent
-                    ${isActive ? "border-t-accent" : "border-t-primary"}
-                  `}
-                />
-              </button>
-            )
-          })}
-
-          {/* User position marker */}
-          {userPosition && (
-            <div
-              className="absolute w-4 h-4 z-30 pointer-events-none"
-              style={{
-                left: `calc(50% + ${(userPosition.lng - center.lng) * 15}%)`,
-                top: `calc(50% + ${(center.lat - userPosition.lat) * 15}%)`,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <div className="w-full h-full bg-blue-500 rounded-full border-2 border-white shadow-lg">
-                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-50" />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Custom Marker Styles */}
+      <style jsx global>{`
+        .custom-price-marker {
+          background: transparent;
+          border: none;
+        }
+        .price-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 6px 10px;
+          background: var(--primary);
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          border-radius: 9999px;
+          border: 2px solid white;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+          white-space: nowrap;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          position: relative;
+        }
+        .price-pill:hover {
+          transform: scale(1.08);
+        }
+        .price-pill.active {
+          background: var(--accent);
+          transform: scale(1.1);
+          z-index: 100;
+        }
+        .price-pill-arrow {
+          position: absolute;
+          bottom: -7px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 6px solid transparent;
+          border-right: 6px solid transparent;
+          border-top: 6px solid var(--primary);
+        }
+        .price-pill-arrow.active {
+          border-top-color: var(--accent);
+        }
+        .user-location-marker {
+          background: transparent;
+          border: none;
+        }
+        .user-dot {
+          width: 16px;
+          height: 16px;
+          background: #3b82f6;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+          position: relative;
+        }
+        .user-dot-ping {
+          position: absolute;
+          inset: -4px;
+          background: rgba(59, 130, 246, 0.4);
+          border-radius: 50%;
+          animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes ping {
+          75%, 100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+        .leaflet-control-zoom {
+          border: none !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        }
+        .leaflet-control-zoom a {
+          width: 32px !important;
+          height: 32px !important;
+          line-height: 32px !important;
+          border-radius: 8px !important;
+          background: white !important;
+          color: var(--foreground) !important;
+          font-size: 16px !important;
+        }
+        .leaflet-control-zoom a:first-child {
+          border-radius: 8px 8px 0 0 !important;
+        }
+        .leaflet-control-zoom a:last-child {
+          border-radius: 0 0 8px 8px !important;
+        }
+      `}</style>
 
       {/* Property Info Card (when selected) */}
       {selectedProperty && (
         <div 
           className={`
-            absolute bg-white rounded-xl shadow-xl border border-border z-30 
+            absolute bg-white rounded-xl shadow-xl border border-border z-[1000] 
             animate-in slide-in-from-bottom-4 duration-200
             ${isMobile 
               ? "bottom-16 left-2 right-2 p-3" 
@@ -199,7 +349,7 @@ export function MapView({
 
       {/* Locate Me Button */}
       {onLocate && (
-        <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 z-20">
+        <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 z-[1000]">
           <Button
             size="sm"
             onClick={onLocate}
@@ -218,12 +368,19 @@ export function MapView({
       )}
 
       {/* Property Count Badge */}
-      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-20">
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-[1000]">
         <div className="bg-white/95 backdrop-blur-sm rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-md border border-border">
           <span className="text-xs sm:text-sm font-bold text-foreground">{properties.length}</span>
           <span className="text-[10px] sm:text-xs text-muted-foreground ml-1">{t("stats_properties")}</span>
         </div>
       </div>
+
+      {/* Loading overlay */}
+      {!mapReady && (
+        <div className="absolute inset-0 bg-secondary flex items-center justify-center z-[500]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
     </div>
   )
 }
