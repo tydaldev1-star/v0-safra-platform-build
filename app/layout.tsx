@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Plus_Jakarta_Sans, Cairo } from "next/font/google"
 import { I18nProvider } from "@/lib/i18n-context"
+import { AuthProvider } from "@/lib/auth-context"
 import "./globals.css"
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -37,7 +38,9 @@ export default function RootLayout({
   return (
     <html lang="fr" className="bg-background">
       <body className={`${plusJakartaSans.variable} ${cairo.variable} font-sans antialiased`}>
-        <I18nProvider>{children}</I18nProvider>
+        <AuthProvider>
+          <I18nProvider>{children}</I18nProvider>
+        </AuthProvider>
       </body>
     </html>
   )

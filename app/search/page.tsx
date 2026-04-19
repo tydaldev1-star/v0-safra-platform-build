@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
+import useSWR from "swr"
 import {
   Search, SlidersHorizontal, MapPin, X, LayoutList, Map,
-  Home, Star, TrendingUp, Building2, ChevronDown
+  Home, Star, TrendingUp, Building2, ChevronDown, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,8 +17,6 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { PropertyCard } from "@/components/property-card"
 import { useI18n } from "@/lib/i18n-context"
-import { MOCK_PROPERTIES } from "@/lib/mock-data"
-import type { PropertyWithCoords } from "@/lib/mock-data"
 
 // Dynamically import the map to avoid SSR issues
 const MapView = dynamic(() => import("@/components/map-view").then((m) => m.MapView), {
@@ -32,11 +31,44 @@ const MapView = dynamic(() => import("@/components/map-view").then((m) => m.MapV
   ),
 })
 
+interface Property {
+  id: number
+  title_fr: string
+  title_en: string | null
+  title_ar: string | null
+  city: string
+  wilaya_name_fr: string
+  wilaya_name_en: string
+  wilaya_name_ar: string
+  address: string
+  lat: number
+  lng: number
+  price_per_night: number
+  bedrooms: number
+  max_guests: number
+  property_type: string
+  avg_rating: number
+  review_count: number
+  primary_image: string | null
+  images: string[]
+  amenities: string[]
+  is_featured: boolean
+}
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
 const AMENITIES_LIST = ["wifi", "ac", "parking", "pool", "kitchen", "tv", "balcony"]
-const PROPERTY_TYPES = ["Appartement", "Villa", "Chalet", "Studio", "Tente de luxe", "Maison"]
+const PROPERTY_TYPES = [
+  { value: "apartment", label: "Appartement" },
+  { value: "villa", label: "Villa" },
+  { value: "chalet", label: "Chalet" },
+  { value: "studio", label: "Studio" },
+  { value: "tent", label: "Tente de luxe" },
+  { value: "house", label: "Maison" },
+]
 
 export default function SearchPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [showFilters, setShowFilters] = useState(false)
   const [searchLocation, setSearchLocation] = useState("")
   const [selectedType, setSelectedType] = useState("")
@@ -49,11 +81,27 @@ export default function SearchPage() {
   const [locating, setLocating] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
+  // Build query string for API
+  const buildQueryString = () => {
+    const params = new URLSearchParams()
+    if (searchLocation) params.set("search", searchLocation)
+    if (selectedType) params.set("type", selectedType)
+    if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString())
+    if (priceRange[1] < 30000) params.set("maxPrice", priceRange[1].toString())
+    return params.toString()
+  }
+
+  const { data, error, isLoading } = useSWR<{ properties: Property[]; total: number }>(
+    `/api/properties?${buildQueryString()}`,
+    fetcher
+  )
+
+  const properties = data?.properties || []
+
   // Detect screen size for responsive behavior
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
-      // Auto-switch to list on mobile if in split mode
       if (window.innerWidth < 1024 && viewMode === "split") {
         setViewMode("list")
       }
@@ -69,33 +117,51 @@ export default function SearchPage() {
     )
   }
 
-  const filtered: PropertyWithCoords[] = MOCK_PROPERTIES.filter((p) => {
-    const matchesLocation =
-      !searchLocation ||
-      p.location.toLowerCase().includes(searchLocation.toLowerCase()) ||
-      p.wilaya.toLowerCase().includes(searchLocation.toLowerCase())
-    const matchesType = !selectedType || p.type === selectedType
-    const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1]
+  // Client-side filtering for amenities (API handles other filters)
+  const filtered = properties.filter((p) => {
     const matchesAmenities =
       selectedAmenities.length === 0 ||
       selectedAmenities.every((a) => p.amenities.includes(a))
-    return matchesLocation && matchesType && matchesPrice && matchesAmenities
-  }).sort((a, b) => {
-    if (sortBy === "price_asc") return a.price - b.price
-    if (sortBy === "price_desc") return b.price - a.price
-    return b.rating - a.rating
+    return matchesAmenities
   })
 
-  // Stats derived from filtered results
-  const uniqueWilayas = new Set(filtered.map((p) => p.wilaya)).size
-  const avgPrice = filtered.length
-    ? Math.round(filtered.reduce((s, p) => s + p.price, 0) / filtered.length)
-    : 0
-  const topRated = filtered.length
-    ? Math.max(...filtered.map((p) => p.rating)).toFixed(1)
-    : "—"
+  // Sort
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "price_asc") return a.price_per_night - b.price_per_night
+    if (sortBy === "price_desc") return b.price_per_night - a.price_per_night
+    if (sortBy === "rating") return b.avg_rating - a.avg_rating
+    return 0
+  })
 
-  const handleLocate = useCallback(() => {
+  // Map property to PropertyCard format
+  const mapToCardFormat = (p: Property) => ({
+    id: p.id.toString(),
+    title: locale === "ar" ? (p.title_ar || p.title_fr) : locale === "en" ? (p.title_en || p.title_fr) : p.title_fr,
+    location: p.city,
+    wilaya: locale === "ar" ? p.wilaya_name_ar : locale === "en" ? p.wilaya_name_en : p.wilaya_name_fr,
+    address: p.address,
+    lat: p.lat,
+    lng: p.lng,
+    price: p.price_per_night,
+    rating: p.avg_rating,
+    reviewCount: p.review_count,
+    image: p.primary_image || p.images[0] || "/images/property-1.jpg",
+    type: p.property_type,
+    bedrooms: p.bedrooms,
+    guests: p.max_guests,
+    amenities: p.amenities,
+    isNew: false,
+  })
+
+  // Stats
+  const stats = {
+    count: sorted.length,
+    wilayas: new Set(sorted.map((p) => p.wilaya_name_fr)).size,
+    avgPrice: sorted.length > 0 ? Math.round(sorted.reduce((s, p) => s + p.price_per_night, 0) / sorted.length) : 0,
+    topRating: sorted.length > 0 ? Math.max(...sorted.map((p) => p.avg_rating)) : 0,
+  }
+
+  const handleLocateMe = useCallback(() => {
     if (!navigator.geolocation) return
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
@@ -104,315 +170,249 @@ export default function SearchPage() {
         setLocating(false)
       },
       () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000 }
     )
   }, [])
-
-  const handleMarkerClick = useCallback((id: string) => {
-    setActivePropertyId(id)
-    const el = document.getElementById(`property-card-${id}`)
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" })
-  }, [])
-
-  const showList = viewMode === "list" || viewMode === "split"
-  const showMap = viewMode === "map" || viewMode === "split"
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
 
-      {/* Sticky Search + Filters Bar */}
-      <div className="bg-card border-b border-border sticky top-14 md:top-16 z-40 shadow-sm">
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-2.5 md:py-3">
-          <div className="flex gap-2 items-center">
-            {/* Search input */}
-            <div className="flex items-center gap-2 flex-1 border border-border rounded-xl px-3 py-2 bg-background focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Input
-                placeholder={t("search_location")}
-                value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
-                className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0 text-sm"
-              />
-              {searchLocation && (
-                <button onClick={() => setSearchLocation("")}>
-                  <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                </button>
-              )}
-            </div>
-
-            {/* Filters toggle */}
+      {/* Search Bar */}
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={t("search_location")}
+              value={searchLocation}
+              onChange={(e) => setSearchLocation(e.target.value)}
+              className="pl-10 h-11 rounded-xl border-border"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0 rounded-xl"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </Button>
+          
+          {/* View Mode Toggle - Desktop */}
+          <div className="hidden lg:flex items-center bg-secondary rounded-xl p-1 gap-1">
             <Button
-              variant="outline"
+              variant={viewMode === "list" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`gap-1.5 rounded-xl h-9 px-2.5 sm:px-3 ${showFilters ? "border-primary text-primary bg-primary/5" : ""}`}
+              className="rounded-lg h-9 px-3"
+              onClick={() => setViewMode("list")}
             >
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs font-medium">{t("search_filters")}</span>
-              <ChevronDown className={`h-3 w-3 transition-transform ${showFilters ? "rotate-180" : ""}`} />
+              <LayoutList className="h-4 w-4 mr-1.5" />
+              {t("list_view")}
             </Button>
-
-            {/* Sort - hidden on very small screens */}
-            <div className="hidden sm:block">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-auto md:w-40 border-border rounded-xl h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rating">{t("search_sort_rating")}</SelectItem>
-                  <SelectItem value="price_asc">{t("search_sort_price_asc")}</SelectItem>
-                  <SelectItem value="price_desc">{t("search_sort_price_desc")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* View Mode switcher - Desktop */}
-            <div className="hidden lg:flex items-center border border-border rounded-xl overflow-hidden">
-              {(["list", "split", "map"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`h-9 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                    viewMode === mode
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-secondary"
-                  }`}
-                >
-                  {mode === "list" && <LayoutList className="h-3.5 w-3.5" />}
-                  {mode === "split" && (
-                    <span className="flex gap-0.5">
-                      <LayoutList className="h-3.5 w-3.5" />
-                      <Map className="h-3.5 w-3.5" />
-                    </span>
-                  )}
-                  {mode === "map" && <Map className="h-3.5 w-3.5" />}
-                  <span className="hidden xl:inline">
-                    {mode === "list" ? t("list_view") : mode === "map" ? t("map_view") : "Split"}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <Button
+              variant={viewMode === "split" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-lg h-9 px-3"
+              onClick={() => setViewMode("split")}
+            >
+              <Map className="h-4 w-4 mr-1.5" />
+              Split
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-lg h-9 px-3"
+              onClick={() => setViewMode("map")}
+            >
+              <Map className="h-4 w-4 mr-1.5" />
+              {t("map_view")}
+            </Button>
           </div>
 
-          {/* Expanded Filters */}
-          {showFilters && (
-            <div className="mt-3 pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-in slide-in-from-top-2 duration-200">
+          {/* Mobile Map Toggle */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="lg:hidden h-11 w-11 shrink-0 rounded-xl"
+            onClick={() => setViewMode(viewMode === "map" ? "list" : "map")}
+          >
+            {viewMode === "map" ? <LayoutList className="h-4 w-4" /> : <Map className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className="border-b bg-card/50 px-4 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Type */}
               <div>
-                <p className="text-xs font-semibold text-foreground mb-2 sm:mb-3 uppercase tracking-wide">{t("search_type")}</p>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {PROPERTY_TYPES.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setSelectedType(selectedType === type ? "" : type)}
-                      className={`text-xs px-2.5 sm:px-3 py-1.5 rounded-full border transition-all ${
-                        selectedType === type
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background border-border text-foreground hover:border-primary/40"
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
+                <Label className="text-xs font-medium mb-2 block">{t("search_type")}</Label>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger className="h-10 rounded-lg">
+                    <SelectValue placeholder="Tous les types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Tous les types</SelectItem>
+                    {PROPERTY_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Price Range */}
+              <div className="sm:col-span-2">
+                <Label className="text-xs font-medium mb-2 block">{t("search_price_range")}</Label>
+                <div className="px-2">
+                  <Slider
+                    value={priceRange}
+                    onValueChange={setPriceRange}
+                    min={0}
+                    max={30000}
+                    step={500}
+                    className="my-4"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{priceRange[0].toLocaleString()} DA</span>
+                    <span>{priceRange[1].toLocaleString()} DA</span>
+                  </div>
                 </div>
               </div>
-              {/* Price */}
+
+              {/* Sort */}
               <div>
-                <p className="text-xs font-semibold text-foreground mb-2 sm:mb-3 uppercase tracking-wide">
-                  {t("search_price_range")}: <span className="text-accent font-bold">{priceRange[0].toLocaleString()} – {priceRange[1].toLocaleString()} DA</span>
-                </p>
-                <Slider
-                  min={0}
-                  max={30000}
-                  step={500}
-                  value={priceRange}
-                  onValueChange={setPriceRange}
-                  className="mt-2"
-                />
-              </div>
-              {/* Amenities */}
-              <div className="sm:col-span-2 lg:col-span-1">
-                <p className="text-xs font-semibold text-foreground mb-2 sm:mb-3 uppercase tracking-wide">{t("search_amenities")}</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2">
-                  {AMENITIES_LIST.map((a) => (
-                    <div key={a} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`amenity-${a}`}
-                        checked={selectedAmenities.includes(a)}
-                        onCheckedChange={() => toggleAmenity(a)}
-                      />
-                      <Label htmlFor={`amenity-${a}`} className="text-xs cursor-pointer">
-                        {t(a as any)}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+                <Label className="text-xs font-medium mb-2 block">{t("search_sort")}</Label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="h-10 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rating">{t("search_sort_rating")}</SelectItem>
+                    <SelectItem value="price_asc">{t("search_sort_price_asc")}</SelectItem>
+                    <SelectItem value="price_desc">{t("search_sort_price_desc")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
+
+            {/* Amenities */}
+            <div className="mt-4">
+              <Label className="text-xs font-medium mb-2 block">{t("search_amenities")}</Label>
+              <div className="flex flex-wrap gap-2">
+                {AMENITIES_LIST.map((a) => (
+                  <button
+                    key={a}
+                    onClick={() => toggleAmenity(a)}
+                    className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                      selectedAmenities.includes(a)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:border-primary/50"
+                    }`}
+                  >
+                    {t(a as any)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Stats Bar */}
-      <div className="bg-white border-b border-border">
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-2.5 md:py-3 flex items-center gap-3 sm:gap-4 md:gap-8 overflow-x-auto">
-          {/* Property count */}
+      <div className="border-b bg-secondary/30 px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-6 overflow-x-auto scrollbar-thin">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Home className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-base sm:text-lg font-bold text-foreground leading-none">{filtered.length}</p>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground">{t("stats_properties")}</p>
-            </div>
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">{stats.count}</span>
+            <span className="text-xs text-muted-foreground">{t("stats_properties")}</span>
           </div>
-          <div className="w-px h-7 sm:h-8 bg-border shrink-0 hidden sm:block" />
-          {/* Wilayas */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-              <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
-            </div>
-            <div>
-              <p className="text-base sm:text-lg font-bold text-foreground leading-none">{uniqueWilayas}</p>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground">{t("stats_wilayas")}</p>
-            </div>
+            <MapPin className="h-4 w-4 text-accent" />
+            <span className="text-sm font-semibold">{stats.wilayas}</span>
+            <span className="text-xs text-muted-foreground">{t("stats_wilayas")}</span>
           </div>
-          <div className="w-px h-7 sm:h-8 bg-border shrink-0 hidden md:block" />
-          {/* Avg price - hidden on very small screens */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gold/10 flex items-center justify-center">
-              <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gold" />
-            </div>
-            <div>
-              <p className="text-base sm:text-lg font-bold text-foreground leading-none">
-                {avgPrice > 0 ? `${avgPrice.toLocaleString()} DA` : "—"}
-              </p>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground">{t("stats_avg_price")}</p>
-            </div>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-semibold">{stats.avgPrice.toLocaleString()} DA</span>
+            <span className="text-xs text-muted-foreground">{t("stats_avg_price")}</span>
           </div>
-          <div className="w-px h-7 sm:h-8 bg-border shrink-0 hidden md:block" />
-          {/* Top rated */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-yellow-50 flex items-center justify-center">
-              <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gold fill-gold" />
-            </div>
-            <div>
-              <p className="text-base sm:text-lg font-bold text-foreground leading-none">{topRated}</p>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground">{t("stats_top_rated")}</p>
-            </div>
-          </div>
-          
-          {/* Mobile/Tablet view toggle */}
-          <div className="lg:hidden ml-auto flex items-center border border-border rounded-xl overflow-hidden shrink-0">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`h-8 px-3 flex items-center gap-1.5 text-xs ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              <LayoutList className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("list_view")}</span>
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={`h-8 px-3 flex items-center gap-1.5 text-xs ${viewMode === "map" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              <Map className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("map_view")}</span>
-            </button>
+            <Star className="h-4 w-4 text-gold fill-gold" />
+            <span className="text-sm font-semibold">{stats.topRating.toFixed(1)}</span>
+            <span className="text-xs text-muted-foreground">{t("stats_top_rated")}</span>
           </div>
         </div>
       </div>
 
-      {/* Main Content: List + Map */}
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-3 sm:px-4 md:px-6 py-4 md:py-6">
-        <div className={`flex gap-4 md:gap-5 ${showMap && viewMode === "split" ? "items-start" : ""}`}>
-
-          {/* Property List */}
-          {showList && (
-            <div className={`flex flex-col gap-3 md:gap-4 ${viewMode === "split" ? "w-full lg:w-[400px] xl:w-[440px] shrink-0" : "w-full"}`}>
-              {filtered.length > 0 ? (
-                <>
-                  <p className="text-xs text-muted-foreground font-medium">
-                    <span className="font-bold text-foreground text-sm">{filtered.length}</span>{" "}
-                    {t("search_results")}
-                  </p>
-                  {viewMode === "split" ? (
-                    // Scrollable list in split view (desktop only)
-                    <div className="flex flex-col gap-3 md:gap-4 max-h-[calc(100vh-260px)] overflow-y-auto pr-1 scrollbar-thin">
-                      {filtered.map((p) => (
-                        <div
-                          key={p.id}
-                          id={`property-card-${p.id}`}
-                          onClick={() => setActivePropertyId(p.id === activePropertyId ? null : p.id)}
-                          className={`rounded-2xl transition-all cursor-pointer ${
-                            activePropertyId === p.id ? "ring-2 ring-accent shadow-lg" : ""
-                          }`}
-                        >
-                          <PropertyCard property={p} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    // Grid for list-only view (responsive columns)
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
-                      {filtered.map((p) => (
-                        <PropertyCard key={p.id} property={p} />
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 md:py-24 text-center">
-                  <MapPin className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/30 mb-4" />
-                  <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">Aucun logement trouvé</h3>
-                  <p className="text-muted-foreground text-xs md:text-sm mb-4 max-w-xs">
-                    Essayez de modifier vos critères ou d&apos;élargir votre zone de recherche.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl"
-                    onClick={() => {
-                      setSearchLocation("")
-                      setSelectedType("")
-                      setPriceRange([0, 30000])
-                      setSelectedAmenities([])
-                    }}
-                  >
-                    Réinitialiser
-                  </Button>
-                </div>
-              )}
+      {/* Main Content */}
+      <div className="flex-1">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
+            Une erreur est survenue. Veuillez réessayer.
+          </div>
+        ) : viewMode === "list" ? (
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {sorted.map((p) => (
+                <PropertyCard key={p.id} property={mapToCardFormat(p)} />
+              ))}
             </div>
-          )}
-
-          {/* Map Panel */}
-          {showMap && (
-            <div
-              className={`
-                rounded-2xl overflow-hidden
-                ${viewMode === "map" ? "w-full" : "hidden lg:block flex-1"}
-              `}
-              style={{ 
-                height: isMobile ? "calc(100vh - 180px)" : "calc(100vh - 260px)", 
-                position: viewMode === "split" ? "sticky" : "relative", 
-                top: viewMode === "split" ? "200px" : "auto" 
-              }}
-            >
+            {sorted.length === 0 && (
+              <div className="text-center py-20 text-muted-foreground">
+                Aucun logement trouvé pour cette recherche.
+              </div>
+            )}
+          </div>
+        ) : viewMode === "map" ? (
+          <div className="h-[calc(100vh-200px)] p-4">
+            <MapView
+              properties={sorted.map(mapToCardFormat)}
+              activeId={activePropertyId}
+              onMarkerClick={setActivePropertyId}
+              userPosition={userPosition}
+              onLocateMe={handleLocateMe}
+              locating={locating}
+            />
+          </div>
+        ) : (
+          <div className="flex h-[calc(100vh-200px)]">
+            {/* List */}
+            <div className="w-1/2 overflow-y-auto p-4 scrollbar-thin">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {sorted.map((p) => (
+                  <div
+                    key={p.id}
+                    onMouseEnter={() => setActivePropertyId(p.id.toString())}
+                    onMouseLeave={() => setActivePropertyId(null)}
+                  >
+                    <PropertyCard property={mapToCardFormat(p)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Map */}
+            <div className="w-1/2 p-4 pl-0">
               <MapView
-                properties={filtered}
+                properties={sorted.map(mapToCardFormat)}
                 activeId={activePropertyId}
-                onMarkerClick={handleMarkerClick}
+                onMarkerClick={setActivePropertyId}
                 userPosition={userPosition}
-                onLocate={handleLocate}
+                onLocateMe={handleLocateMe}
                 locating={locating}
               />
             </div>
-          )}
-        </div>
-      </main>
+          </div>
+        )}
+      </div>
 
-      {viewMode !== "split" && <Footer />}
+      <Footer />
     </div>
   )
 }
