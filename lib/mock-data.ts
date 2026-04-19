@@ -1,17 +1,26 @@
 import type { Property } from "@/components/property-card"
 
+export interface PropertyWithCoords extends Property {
+  lat: number
+  lng: number
+  address: string
+}
+
 export const WILAYAS = [
   "Alger", "Oran", "Constantine", "Annaba", "Sétif", "Blida", "Béjaïa",
   "Tlemcen", "Tizi Ouzou", "Batna", "Biskra", "Tamanrasset", "Ghardaïa",
   "Skikda", "Jijel", "Tipaza", "Boumerdès", "Médéa", "Chlef", "Mostaganem",
 ]
 
-export const MOCK_PROPERTIES: Property[] = [
+export const MOCK_PROPERTIES: PropertyWithCoords[] = [
   {
     id: "1",
     title: "Appartement vue mer à Alger Centre",
     location: "Hydra",
     wilaya: "Alger",
+    address: "Rue des Frères Abbane, Hydra, Alger",
+    lat: 36.7538,
+    lng: 3.0588,
     price: 8500,
     rating: 4.9,
     reviewCount: 47,
@@ -27,6 +36,9 @@ export const MOCK_PROPERTIES: Property[] = [
     title: "Villa traditionnelle avec piscine – Tlemcen",
     location: "Tlemcen",
     wilaya: "Tlemcen",
+    address: "Quartier Mansourah, Tlemcen",
+    lat: 34.8828,
+    lng: -1.3165,
     price: 15000,
     rating: 4.8,
     reviewCount: 32,
@@ -40,8 +52,11 @@ export const MOCK_PROPERTIES: Property[] = [
   {
     id: "3",
     title: "Maison de plage luxueuse – Béjaïa",
-    location: "Bejaia",
+    location: "Béjaïa",
     wilaya: "Béjaïa",
+    address: "Corniche de Béjaïa, Béjaïa",
+    lat: 36.7509,
+    lng: 5.0564,
     price: 12000,
     rating: 5.0,
     reviewCount: 18,
@@ -57,6 +72,9 @@ export const MOCK_PROPERTIES: Property[] = [
     title: "Chalet de montagne – Tikjda",
     location: "Tikjda",
     wilaya: "Bouira",
+    address: "Station de Tikjda, Bouira",
+    lat: 36.5048,
+    lng: 3.6775,
     price: 6500,
     rating: 4.7,
     reviewCount: 24,
@@ -72,6 +90,9 @@ export const MOCK_PROPERTIES: Property[] = [
     title: "Tente Saharienne de Luxe – Tamanrasset",
     location: "Tamanrasset",
     wilaya: "Tamanrasset",
+    address: "Désert d'Ahaggar, Tamanrasset",
+    lat: 22.785,
+    lng: 5.5228,
     price: 9000,
     rating: 4.9,
     reviewCount: 11,
@@ -87,6 +108,9 @@ export const MOCK_PROPERTIES: Property[] = [
     title: "Studio moderne – Centre d'Alger",
     location: "Ben Aknoun",
     wilaya: "Alger",
+    address: "Avenue du 1er Novembre, Ben Aknoun, Alger",
+    lat: 36.7634,
+    lng: 3.019,
     price: 4500,
     rating: 4.6,
     reviewCount: 63,
@@ -96,6 +120,42 @@ export const MOCK_PROPERTIES: Property[] = [
     guests: 2,
     amenities: ["wifi", "ac", "tv", "kitchen"],
     isNew: false,
+  },
+  {
+    id: "7",
+    title: "Riad historique – Médina d'Oran",
+    location: "Oran",
+    wilaya: "Oran",
+    address: "Quartier de l'Ancien Château, Oran",
+    lat: 35.6969,
+    lng: -0.6331,
+    price: 7200,
+    rating: 4.8,
+    reviewCount: 29,
+    image: "/images/property-2.jpg",
+    type: "Maison",
+    bedrooms: 4,
+    guests: 8,
+    amenities: ["wifi", "kitchen", "balcony", "tv"],
+    isNew: false,
+  },
+  {
+    id: "8",
+    title: "Appartement bord de plage – Tipaza",
+    location: "Tipaza",
+    wilaya: "Tipaza",
+    address: "Boulevard du Front de Mer, Tipaza",
+    lat: 36.5951,
+    lng: 2.4476,
+    price: 5800,
+    rating: 4.7,
+    reviewCount: 41,
+    image: "/images/property-1.jpg",
+    type: "Appartement",
+    bedrooms: 2,
+    guests: 4,
+    amenities: ["wifi", "ac", "balcony", "kitchen"],
+    isNew: true,
   },
 ]
 

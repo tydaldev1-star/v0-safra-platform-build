@@ -133,6 +133,16 @@ export const translations = {
     review_comment: "Commentaire",
     review_submit: "Publier",
 
+    // Map & Stats
+    map_view: "Carte",
+    list_view: "Liste",
+    map_locate_me: "Ma position",
+    map_your_location: "Votre position",
+    stats_properties: "logements",
+    stats_wilayas: "wilayas",
+    stats_avg_price: "prix moyen / nuit",
+    stats_top_rated: "mieux noté",
+
     // General
     loading: "Chargement...",
     save: "Enregistrer",
@@ -273,6 +283,15 @@ export const translations = {
     review_comment: "Comment",
     review_submit: "Submit",
 
+    map_view: "Map",
+    list_view: "List",
+    map_locate_me: "My location",
+    map_your_location: "Your location",
+    stats_properties: "properties",
+    stats_wilayas: "wilayas",
+    stats_avg_price: "avg price / night",
+    stats_top_rated: "top rated",
+
     loading: "Loading...",
     save: "Save",
     cancel: "Cancel",
@@ -411,6 +430,15 @@ export const translations = {
     review_rating: "التقييم",
     review_comment: "التعليق",
     review_submit: "نشر",
+
+    map_view: "الخريطة",
+    list_view: "القائمة",
+    map_locate_me: "موقعي",
+    map_your_location: "موقعك",
+    stats_properties: "مسكن",
+    stats_wilayas: "ولايات",
+    stats_avg_price: "متوسط السعر / ليلة",
+    stats_top_rated: "الأعلى تقييمًا",
 
     loading: "جارٍ التحميل...",
     save: "حفظ",

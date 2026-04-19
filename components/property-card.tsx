@@ -12,6 +12,9 @@ export interface Property {
   title: string
   location: string
   wilaya: string
+  address?: string
+  lat?: number
+  lng?: number
   price: number
   rating: number
   reviewCount: number
