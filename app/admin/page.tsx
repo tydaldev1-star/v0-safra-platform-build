@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import useSWR from "swr"
@@ -20,12 +20,13 @@ import { useAuth } from "@/lib/auth-context"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
-const STATUS_BADGE = {
-  approved: <Badge className="bg-green-100 text-green-700 border-green-200 gap-1 text-xs"><CheckCircle className="h-3 w-3" />Vérifié</Badge>,
-  pending: <Badge className="bg-amber-100 text-amber-700 border-amber-200 gap-1 text-xs"><Clock className="h-3 w-3" />En attente</Badge>,
-  rejected: <Badge className="bg-red-100 text-red-700 border-red-200 gap-1 text-xs"><XCircle className="h-3 w-3" />Refusé</Badge>,
-  active: <Badge className="bg-green-100 text-green-700 border-green-200 gap-1 text-xs"><CheckCircle className="h-3 w-3" />Active</Badge>,
+const STATUS_BADGE: Record<string, React.ReactNode> = {
+  approved:  <Badge className="bg-green-100 text-green-700 border-green-200 gap-1 text-xs"><CheckCircle className="h-3 w-3" />Vérifié</Badge>,
+  pending:   <Badge className="bg-amber-100 text-amber-700 border-amber-200 gap-1 text-xs"><Clock className="h-3 w-3" />En attente</Badge>,
+  rejected:  <Badge className="bg-red-100 text-red-700 border-red-200 gap-1 text-xs"><XCircle className="h-3 w-3" />Refusé</Badge>,
+  active:    <Badge className="bg-green-100 text-green-700 border-green-200 gap-1 text-xs"><CheckCircle className="h-3 w-3" />Active</Badge>,
   suspended: <Badge className="bg-red-100 text-red-700 border-red-200 gap-1 text-xs"><Ban className="h-3 w-3" />Suspendue</Badge>,
+  inactive:  <Badge className="bg-secondary text-muted-foreground border-border gap-1 text-xs"><Clock className="h-3 w-3" />Inactive</Badge>,
 }
 
 interface User {
@@ -46,7 +47,15 @@ interface Property {
   type: string
   price: number
   status: string
-  image: string
+  image: string | null
+  host_name: string
+  host_email: string
+  host_status: string
+  avg_rating: string
+  review_count: number
+  booking_count: number
+  is_featured: boolean
+  created_at: string
 }
 
 interface Stats {
@@ -84,7 +93,7 @@ export default function AdminDashboard() {
   )
 
   const { data: propertiesData, mutate: mutateProperties } = useSWR<{ properties: Property[] }>(
-    user?.role === "admin" ? "/api/properties?limit=100" : null,
+    user?.role === "admin" ? `/api/admin/properties${search && activeTab === "listings" ? `?search=${search}` : ""}` : null,
     fetcher
   )
 
@@ -336,46 +345,111 @@ export default function AdminDashboard() {
 
           {/* Listings Tab */}
           <TabsContent value="listings">
-            <div className="space-y-3">
-              {properties.map((p) => (
-                <div key={p.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4">
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0">
-                    <Image src={p.image || "/images/property-1.jpg"} alt={p.title} fill className="object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-foreground text-sm truncate">{p.title}</h4>
-                    <p className="text-xs text-muted-foreground">{p.location}, {p.wilaya} . {p.type}</p>
-                    <p className="text-xs font-semibold text-primary mt-1">{p.price.toLocaleString()} DA / nuit</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {STATUS_BADGE[p.status as keyof typeof STATUS_BADGE] || STATUS_BADGE.pending}
-                    {p.status === "active" ? (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-7 text-xs border-red-200 text-red-600 gap-1"
-                        onClick={() => handlePropertyStatus(p.id, "suspended")}
-                      >
-                        <Ban className="h-3 w-3" /> Suspendre
-                      </Button>
-                    ) : (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-7 text-xs border-green-200 text-green-600 gap-1"
-                        onClick={() => handlePropertyStatus(p.id, "active")}
-                      >
-                        <CheckCircle className="h-3 w-3" /> Activer
-                      </Button>
-                    )}
-                  </div>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-1 border border-border rounded-lg px-3 py-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher une annonce ou un hôte..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0 text-sm"
+                  />
                 </div>
-              ))}
-              {properties.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground">
-                  Aucune annonce trouvée
+                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                  {properties.length} annonce{properties.length !== 1 ? "s" : ""}
                 </div>
-              )}
+              </div>
+              <div className="divide-y divide-border">
+                {properties
+                  .filter((p) => !search ||
+                    p.title?.toLowerCase().includes(search.toLowerCase()) ||
+                    p.host_name?.toLowerCase().includes(search.toLowerCase()) ||
+                    p.wilaya?.toLowerCase().includes(search.toLowerCase())
+                  )
+                  .map((p) => (
+                  <div key={p.id} className="p-4 flex items-start gap-4 hover:bg-secondary/20">
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
+                      {p.image ? (
+                        <Image src={p.image} alt={p.title} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Home className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div>
+                          <h4 className="font-semibold text-foreground text-sm">{p.title || "Sans titre"}</h4>
+                          <p className="text-xs text-muted-foreground">{p.location}{p.wilaya ? `, ${p.wilaya}` : ""} · {p.type}</p>
+                          <p className="text-xs font-semibold text-primary mt-0.5">{Number(p.price).toLocaleString()} DA / nuit</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap shrink-0">
+                          {STATUS_BADGE[p.status] ?? STATUS_BADGE.pending}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
+                        <div className="text-xs text-muted-foreground">
+                          Hôte : <span className="text-foreground font-medium">{p.host_name}</span>
+                          {" · "}
+                          {new Date(p.created_at).toLocaleDateString("fr-FR")}
+                          {p.booking_count > 0 && ` · ${p.booking_count} réservation(s)`}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {p.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"
+                                onClick={() => handlePropertyStatus(p.id, "active")}
+                              >
+                                <CheckCircle className="h-3 w-3" /> Approuver
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 gap-1"
+                                onClick={() => handlePropertyStatus(p.id, "suspended")}
+                              >
+                                <XCircle className="h-3 w-3" /> Rejeter
+                              </Button>
+                            </>
+                          )}
+                          {p.status === "active" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 gap-1"
+                              onClick={() => handlePropertyStatus(p.id, "suspended")}
+                            >
+                              <Ban className="h-3 w-3" /> Suspendre
+                            </Button>
+                          )}
+                          {(p.status === "suspended" || p.status === "inactive") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs border-green-200 text-green-600 hover:bg-green-50 gap-1"
+                              onClick={() => handlePropertyStatus(p.id, "active")}
+                            >
+                              <CheckCircle className="h-3 w-3" /> Activer
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {properties.filter((p) => !search ||
+                    p.title?.toLowerCase().includes(search.toLowerCase()) ||
+                    p.host_name?.toLowerCase().includes(search.toLowerCase()) ||
+                    p.wilaya?.toLowerCase().includes(search.toLowerCase())
+                  ).length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground text-sm">
+                    Aucune annonce trouvée
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
