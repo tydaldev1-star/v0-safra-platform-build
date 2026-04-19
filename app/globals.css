@@ -4,50 +4,55 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Safra Brand Colors: Warm terracotta primary, clean neutrals, gold accent */
-  --background: oklch(0.99 0.003 60);
-  --foreground: oklch(0.18 0.02 30);
+  /* Safra Brand Colors — Navy Blue (#2D4A8A) primary, Orange (#F4872A) accent */
+  --background: oklch(0.985 0.004 240);
+  --foreground: oklch(0.17 0.03 255);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 30);
+  --card-foreground: oklch(0.17 0.03 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 30);
-  /* Primary: Warm Terracotta/Coral */
-  --primary: oklch(0.58 0.18 28);
+  --popover-foreground: oklch(0.17 0.03 255);
+  /* Primary: Safra Navy Blue */
+  --primary: oklch(0.38 0.13 258);
   --primary-foreground: oklch(1 0 0);
-  /* Secondary: Soft sand */
-  --secondary: oklch(0.95 0.02 60);
-  --secondary-foreground: oklch(0.28 0.02 30);
-  --muted: oklch(0.95 0.01 50);
-  --muted-foreground: oklch(0.52 0.02 30);
-  /* Accent: Deep teal */
-  --accent: oklch(0.45 0.1 195);
+  /* Secondary: Light blue-grey */
+  --secondary: oklch(0.94 0.02 240);
+  --secondary-foreground: oklch(0.28 0.06 255);
+  --muted: oklch(0.94 0.015 240);
+  --muted-foreground: oklch(0.5 0.04 255);
+  /* Accent: Safra Orange */
+  --accent: oklch(0.68 0.19 52);
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.9 0.01 50);
-  --input: oklch(0.93 0.01 50);
-  --ring: oklch(0.58 0.18 28);
-  --chart-1: oklch(0.58 0.18 28);
-  --chart-2: oklch(0.45 0.1 195);
-  --chart-3: oklch(0.7 0.15 60);
-  --chart-4: oklch(0.65 0.18 140);
-  --chart-5: oklch(0.55 0.15 300);
+  --border: oklch(0.88 0.015 240);
+  --input: oklch(0.92 0.012 240);
+  --ring: oklch(0.38 0.13 258);
+  --chart-1: oklch(0.38 0.13 258);
+  --chart-2: oklch(0.68 0.19 52);
+  --chart-3: oklch(0.55 0.12 200);
+  --chart-4: oklch(0.65 0.15 160);
+  --chart-5: oklch(0.6 0.18 300);
   --radius: 0.75rem;
-  --sidebar: oklch(0.18 0.02 30);
-  --sidebar-foreground: oklch(0.95 0.01 50);
-  --sidebar-primary: oklch(0.58 0.18 28);
+  /* Sidebar uses navy */
+  --sidebar: oklch(0.25 0.1 258);
+  --sidebar-foreground: oklch(0.95 0.01 240);
+  --sidebar-primary: oklch(0.68 0.19 52);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.25 0.02 30);
-  --sidebar-accent-foreground: oklch(0.95 0.01 50);
-  --sidebar-border: oklch(0.3 0.02 30);
-  --sidebar-ring: oklch(0.58 0.18 28);
-  /* Gold accent for stars/badges */
-  --gold: oklch(0.78 0.17 75);
+  --sidebar-accent: oklch(0.32 0.1 258);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.35 0.1 258);
+  --sidebar-ring: oklch(0.68 0.19 52);
+  /* Gold for stars */
+  --gold: oklch(0.78 0.18 72);
+  /* Brand shorthands */
+  --brand-navy: oklch(0.38 0.13 258);
+  --brand-orange: oklch(0.68 0.19 52);
+  --brand-navy-dark: oklch(0.25 0.1 258);
 }
 
 @theme inline {
-  --font-sans: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', sans-serif;
-  --font-arabic: 'Cairo', 'Cairo Fallback', sans-serif;
+  --font-sans: var(--font-sans), 'Plus Jakarta Sans', sans-serif;
+  --font-arabic: var(--font-arabic), 'Cairo', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -85,6 +90,9 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-gold: var(--gold);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-navy-dark: var(--brand-navy-dark);
 }
 
 @layer base {

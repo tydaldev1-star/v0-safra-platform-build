@@ -1,95 +1,136 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useI18n } from "@/lib/i18n-context"
-import { Facebook, Instagram, Twitter } from "lucide-react"
+import { Facebook, Instagram, Youtube, Phone, Mail, MapPin } from "lucide-react"
 
 export function Footer() {
   const { t } = useI18n()
 
   return (
-    <footer className="bg-foreground text-background mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-brand-navy-dark text-white mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-14 pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">S</span>
-              </div>
-              <span className="text-xl font-bold text-background">Safra</span>
-            </div>
-            <p className="text-background/60 text-sm leading-relaxed max-w-xs">
-              Safra vous connecte aux meilleurs logements en Algérie pour des séjours inoubliables.
+            <Link href="/" className="inline-block mb-5">
+              <Image
+                src="/images/safra-logo.png"
+                alt="Safra"
+                width={130}
+                height={48}
+                className="h-12 w-auto object-contain brightness-0 invert"
+              />
+            </Link>
+            <p className="text-white/60 text-sm leading-relaxed max-w-xs mb-5">
+              Safra vous connecte aux meilleurs logements en Algérie pour des séjours inoubliables. Réservez en toute confiance.
             </p>
-            <div className="flex gap-3 mt-4">
-              <a href="#" className="text-background/50 hover:text-background transition-colors">
-                <Facebook className="h-5 w-5" />
+            <div className="flex gap-3">
+              <a
+                href="#"
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-accent hover:text-accent-foreground flex items-center justify-center transition-colors"
+                aria-label="Facebook"
+              >
+                <Facebook className="h-4 w-4" />
               </a>
-              <a href="#" className="text-background/50 hover:text-background transition-colors">
-                <Instagram className="h-5 w-5" />
+              <a
+                href="#"
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-accent hover:text-accent-foreground flex items-center justify-center transition-colors"
+                aria-label="Instagram"
+              >
+                <Instagram className="h-4 w-4" />
               </a>
-              <a href="#" className="text-background/50 hover:text-background transition-colors">
-                <Twitter className="h-5 w-5" />
+              <a
+                href="#"
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-accent hover:text-accent-foreground flex items-center justify-center transition-colors"
+                aria-label="YouTube"
+              >
+                <Youtube className="h-4 w-4" />
               </a>
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Platform links */}
           <div>
-            <h4 className="font-semibold text-background mb-3">Plateforme</h4>
-            <ul className="space-y-2">
+            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wide">
+              Plateforme
+            </h4>
+            <ul className="space-y-2.5">
               <li>
-                <Link href="/search" className="text-background/60 hover:text-background text-sm transition-colors">
+                <Link
+                  href="/search"
+                  className="text-white/60 hover:text-accent text-sm transition-colors"
+                >
                   {t("nav_search")}
                 </Link>
               </li>
               <li>
-                <Link href="/register" className="text-background/60 hover:text-background text-sm transition-colors">
+                <Link
+                  href="/register"
+                  className="text-white/60 hover:text-accent text-sm transition-colors"
+                >
                   {t("footer_host")}
                 </Link>
               </li>
               <li>
-                <Link href="/login" className="text-background/60 hover:text-background text-sm transition-colors">
+                <Link
+                  href="/login"
+                  className="text-white/60 hover:text-accent text-sm transition-colors"
+                >
                   {t("nav_login")}
                 </Link>
               </li>
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h4 className="font-semibold text-background mb-3">Légal</h4>
-            <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-background/60 hover:text-background text-sm transition-colors">
+                <Link
+                  href="#"
+                  className="text-white/60 hover:text-accent text-sm transition-colors"
+                >
                   {t("footer_about")}
                 </Link>
               </li>
-              <li>
-                <Link href="#" className="text-background/60 hover:text-background text-sm transition-colors">
-                  {t("footer_terms")}
-                </Link>
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wide">
+              {t("footer_contact")}
+            </h4>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-2.5 text-sm text-white/60">
+                <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-accent" />
+                <span>Alger, Algérie</span>
               </li>
-              <li>
-                <Link href="#" className="text-background/60 hover:text-background text-sm transition-colors">
-                  {t("footer_privacy")}
-                </Link>
+              <li className="flex items-center gap-2.5 text-sm text-white/60">
+                <Phone className="h-4 w-4 shrink-0 text-accent" />
+                <span>+213 XX XX XX XX</span>
               </li>
-              <li>
-                <Link href="#" className="text-background/60 hover:text-background text-sm transition-colors">
-                  {t("footer_contact")}
-                </Link>
+              <li className="flex items-center gap-2.5 text-sm text-white/60">
+                <Mail className="h-4 w-4 shrink-0 text-accent" />
+                <span>contact@safra.dz</span>
               </li>
             </ul>
+            <div className="flex gap-2 mt-5">
+              <Link href="#" className="text-white/50 hover:text-white text-xs transition-colors">
+                {t("footer_terms")}
+              </Link>
+              <span className="text-white/20 text-xs">·</span>
+              <Link href="#" className="text-white/50 hover:text-white text-xs transition-colors">
+                {t("footer_privacy")}
+              </Link>
+            </div>
           </div>
         </div>
 
-        <div className="border-t border-background/10 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-background/50 text-sm">
+        <div className="border-t border-white/10 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-white/40 text-sm">
             © {new Date().getFullYear()} Safra. {t("footer_rights")}.
           </p>
-          <p className="text-background/40 text-xs">Algérie · الجزائر</p>
+          <p className="text-white/30 text-xs font-arabic">
+            الجزائر · Algérie · Algeria
+          </p>
         </div>
       </div>
     </footer>

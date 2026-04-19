@@ -24,11 +24,14 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           {/* Header */}
           <div className="flex items-center justify-between mb-10">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">S</span>
-              </div>
-              <span className="text-xl font-bold text-foreground">Safra</span>
+            <Link href="/">
+              <Image
+                src="/images/safra-logo.png"
+                alt="Safra"
+                width={120}
+                height={44}
+                className="h-10 w-auto object-contain"
+              />
             </Link>
             <LanguageSwitcher />
           </div>
@@ -81,7 +84,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+              className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-semibold rounded-xl"
             >
               <LogIn className="h-4 w-4 mr-2" />
               {t("auth_login_btn")}
@@ -122,7 +125,7 @@ export default function LoginPage() {
           fill
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-foreground/40 flex items-end p-12">
+        <div className="absolute inset-0 bg-brand-navy-dark/60 flex items-end p-12">
           <div>
             <p className="text-white text-3xl font-bold mb-2 text-balance">
               Découvrez l&apos;Algérie autrement

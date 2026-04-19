@@ -1,12 +1,20 @@
 import type { Metadata } from "next"
-import { Plus_Jakarta_Sans } from "next/font/google"
+import { Plus_Jakarta_Sans, Cairo } from "next/font/google"
 import { I18nProvider } from "@/lib/i18n-context"
 import "./globals.css"
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-plus-jakarta",
+  variable: "--font-sans",
   display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+})
+
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  variable: "--font-arabic",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 })
 
 export const metadata: Metadata = {
@@ -28,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="bg-background">
-      <body className={`${plusJakartaSans.variable} font-sans antialiased`}>
+      <body className={`${plusJakartaSans.variable} ${cairo.variable} font-sans antialiased`}>
         <I18nProvider>{children}</I18nProvider>
       </body>
     </html>

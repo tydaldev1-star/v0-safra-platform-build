@@ -9,35 +9,40 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
 
-const LANGUAGES: { code: Locale; label: string; flag: string }[] = [
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "ar", label: "العربية", flag: "🇩🇿" },
+const LANGUAGES: { code: Locale; label: string; short: string }[] = [
+  { code: "fr", label: "Français", short: "FR" },
+  { code: "en", label: "English", short: "EN" },
+  { code: "ar", label: "العربية", short: "AR" },
 ]
 
 export function LanguageSwitcher() {
-  const { locale, setLocale } = useI18n()
+  const { locale, setLocale, isRTL } = useI18n()
   const current = LANGUAGES.find((l) => l.code === locale)
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 text-foreground/80 hover:text-foreground">
-          <Globe className="h-4 w-4" />
-          <span className="hidden sm:inline">{current?.label}</span>
-          <span className="sm:hidden">{current?.flag}</span>
-        </Button>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-sm font-medium text-foreground/80 hover:text-primary">
+          <Globe className="h-3.5 w-3.5" />
+          <span>{current?.short}</span>
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
+      <DropdownMenuContent
+        align={isRTL ? "start" : "end"}
+        className="w-36 mt-1 p-1"
+      >
         {LANGUAGES.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
             onClick={() => setLocale(lang.code)}
-            className={`gap-2 cursor-pointer ${locale === lang.code ? "font-semibold text-primary" : ""}`}
+            className={`gap-3 cursor-pointer rounded-md px-3 py-2 text-sm ${
+              locale === lang.code
+                ? "font-semibold text-primary bg-primary/5"
+                : "text-foreground/70"
+            }`}
           >
-            <span>{lang.flag}</span>
+            <span className="text-xs font-bold w-6 text-center opacity-60">{lang.short}</span>
             <span>{lang.label}</span>
           </DropdownMenuItem>
         ))}

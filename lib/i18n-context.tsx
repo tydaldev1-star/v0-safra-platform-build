@@ -30,6 +30,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale)
     localStorage.setItem("safra-locale", newLocale)
+    // Update html element for RTL and lang attribute
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("dir", newLocale === "ar" ? "rtl" : "ltr")
+      document.documentElement.setAttribute("lang", newLocale)
+    }
   }
 
   const t = (key: TranslationKey): string => {
@@ -38,9 +43,17 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const isRTL = locale === "ar"
 
+  // Sync dir/lang on mount
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("dir", isRTL ? "rtl" : "ltr")
+      document.documentElement.setAttribute("lang", locale)
+    }
+  }, [locale, isRTL])
+
   return (
     <I18nContext.Provider value={{ locale, setLocale, t, isRTL }}>
-      <div dir={isRTL ? "rtl" : "ltr"} className={isRTL ? "font-arabic" : ""}>
+      <div className={isRTL ? "font-arabic" : "font-sans"}>
         {children}
       </div>
     </I18nContext.Provider>
