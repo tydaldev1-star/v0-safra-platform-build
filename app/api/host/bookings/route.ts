@@ -1,74 +1,57 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { createClient } from "@/lib/supabase-server"
+import { getSessionUser } from "@/lib/auth"
+import { query } from "@/lib/db"
 
 export async function GET() {
   try {
     const cookieStore = await cookies()
-    const supabase = createClient(cookieStore)
-
-    // Get current user session
     const sessionToken = cookieStore.get("session_token")?.value
     if (!sessionToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get user from session
-    const { data: session } = await supabase
-      .from("sessions")
-      .select("user_id")
-      .eq("token", sessionToken)
-      .gt("expires_at", new Date().toISOString())
-      .single()
-
-    if (!session) {
+    const user = await getSessionUser(sessionToken)
+    if (!user || user.role !== "host") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get host's properties first
-    const { data: properties } = await supabase
-      .from("properties")
-      .select("id")
-      .eq("host_id", session.user_id)
+    // Get host's property IDs
+    const properties = await query<{ id: number }[]>(
+      "SELECT id FROM properties WHERE host_id = ?",
+      [user.id]
+    )
 
-    if (!properties || properties.length === 0) {
+    if (!properties.length) {
       return NextResponse.json({ bookings: [] })
     }
 
     const propertyIds = properties.map((p) => p.id)
+    const placeholders = propertyIds.map(() => "?").join(",")
 
-    // Get bookings for host's properties
-    const { data: bookings, error } = await supabase
-      .from("bookings")
-      .select(`
-        id,
-        check_in,
-        check_out,
-        total_price,
-        status,
-        users!bookings_user_id_fkey(full_name),
-        properties!bookings_property_id_fkey(title)
-      `)
-      .in("property_id", propertyIds)
-      .order("created_at", { ascending: false })
+    const bookings = await query<any[]>(
+      `SELECT b.id, b.check_in, b.check_out, b.total_price, b.status, b.created_at,
+              u.full_name AS guest_name,
+              p.title AS property_title
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       JOIN properties p ON b.property_id = p.id
+       WHERE b.property_id IN (${placeholders})
+       ORDER BY b.created_at DESC`,
+      propertyIds
+    )
 
-    if (error) {
-      console.error("Error fetching host bookings:", error)
-      return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 })
-    }
-
-    // Transform data
-    const transformedBookings = (bookings || []).map((b: any) => ({
+    const transformed = bookings.map((b) => ({
       id: b.id,
-      guest_name: b.users?.full_name || "Guest",
-      property_title: b.properties?.title || "Property",
+      guest_name: b.guest_name || "Guest",
+      property_title: b.property_title || "Property",
       check_in: b.check_in,
       check_out: b.check_out,
       total_price: b.total_price,
       status: b.status || "pending",
     }))
 
-    return NextResponse.json({ bookings: transformedBookings })
+    return NextResponse.json({ bookings: transformed })
   } catch (error) {
     console.error("Host bookings error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
