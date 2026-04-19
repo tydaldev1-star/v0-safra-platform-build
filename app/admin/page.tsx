@@ -441,10 +441,10 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 {properties.filter((p) => !search ||
-                    p.title?.toLowerCase().includes(search.toLowerCase()) ||
-                    p.host_name?.toLowerCase().includes(search.toLowerCase()) ||
-                    p.wilaya?.toLowerCase().includes(search.toLowerCase())
-                  ).length === 0 && (
+                  p.title?.toLowerCase().includes(search.toLowerCase()) ||
+                  p.host_name?.toLowerCase().includes(search.toLowerCase()) ||
+                  p.wilaya?.toLowerCase().includes(search.toLowerCase())
+                ).length === 0 && (
                   <div className="text-center py-12 text-muted-foreground text-sm">
                     Aucune annonce trouvée
                   </div>
