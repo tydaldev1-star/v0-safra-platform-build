@@ -361,94 +361,95 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="divide-y divide-border">
-                {properties
-                  .filter((p) => !search ||
+                {(() => {
+                  const filtered = properties.filter((p) =>
+                    !search ||
                     p.title?.toLowerCase().includes(search.toLowerCase()) ||
                     p.host_name?.toLowerCase().includes(search.toLowerCase()) ||
                     p.wilaya?.toLowerCase().includes(search.toLowerCase())
                   )
-                  .map((p) => (
-                  <div key={p.id} className="p-4 flex items-start gap-4 hover:bg-secondary/20">
-                    <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
-                      {p.image ? (
-                        <Image src={p.image} alt={p.title} fill className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Home className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 flex-wrap">
-                        <div>
-                          <h4 className="font-semibold text-foreground text-sm">{p.title || "Sans titre"}</h4>
-                          <p className="text-xs text-muted-foreground">{p.location}{p.wilaya ? `, ${p.wilaya}` : ""} · {p.type}</p>
-                          <p className="text-xs font-semibold text-primary mt-0.5">{Number(p.price).toLocaleString()} DA / nuit</p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap shrink-0">
-                          {STATUS_BADGE[p.status] ?? STATUS_BADGE.pending}
-                        </div>
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-12 text-muted-foreground text-sm">
+                        Aucune annonce trouvée
                       </div>
-                      <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
-                        <div className="text-xs text-muted-foreground">
-                          Hôte : <span className="text-foreground font-medium">{p.host_name}</span>
-                          {" · "}
-                          {new Date(p.created_at).toLocaleDateString("fr-FR")}
-                          {p.booking_count > 0 && ` · ${p.booking_count} réservation(s)`}
+                    )
+                  }
+                  return filtered.map((p) => (
+                    <div key={p.id} className="p-4 flex items-start gap-4 hover:bg-secondary/20">
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
+                        {p.image ? (
+                          <Image src={p.image} alt={p.title} fill className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Home className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <div>
+                            <h4 className="font-semibold text-foreground text-sm">{p.title || "Sans titre"}</h4>
+                            <p className="text-xs text-muted-foreground">{p.location}{p.wilaya ? `, ${p.wilaya}` : ""} · {p.type}</p>
+                            <p className="text-xs font-semibold text-primary mt-0.5">{Number(p.price).toLocaleString()} DA / nuit</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap shrink-0">
+                            {STATUS_BADGE[p.status] ?? STATUS_BADGE.pending}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {p.status === "pending" && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"
-                                onClick={() => handlePropertyStatus(p.id, "active")}
-                              >
-                                <CheckCircle className="h-3 w-3" /> Approuver
-                              </Button>
+                        <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
+                          <div className="text-xs text-muted-foreground">
+                            Hôte : <span className="text-foreground font-medium">{p.host_name}</span>
+                            {" · "}
+                            {new Date(p.created_at).toLocaleDateString("fr-FR")}
+                            {p.booking_count > 0 && ` · ${p.booking_count} réservation(s)`}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {p.status === "pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"
+                                  onClick={() => handlePropertyStatus(p.id, "active")}
+                                >
+                                  <CheckCircle className="h-3 w-3" /> Approuver
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 gap-1"
+                                  onClick={() => handlePropertyStatus(p.id, "suspended")}
+                                >
+                                  <XCircle className="h-3 w-3" /> Rejeter
+                                </Button>
+                              </>
+                            )}
+                            {p.status === "active" && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 gap-1"
                                 onClick={() => handlePropertyStatus(p.id, "suspended")}
                               >
-                                <XCircle className="h-3 w-3" /> Rejeter
+                                <Ban className="h-3 w-3" /> Suspendre
                               </Button>
-                            </>
-                          )}
-                          {p.status === "active" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 gap-1"
-                              onClick={() => handlePropertyStatus(p.id, "suspended")}
-                            >
-                              <Ban className="h-3 w-3" /> Suspendre
-                            </Button>
-                          )}
-                          {(p.status === "suspended" || p.status === "inactive") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs border-green-200 text-green-600 hover:bg-green-50 gap-1"
-                              onClick={() => handlePropertyStatus(p.id, "active")}
-                            >
-                              <CheckCircle className="h-3 w-3" /> Activer
-                            </Button>
-                          )}
+                            )}
+                            {(p.status === "suspended" || p.status === "inactive") && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-green-200 text-green-600 hover:bg-green-50 gap-1"
+                                onClick={() => handlePropertyStatus(p.id, "active")}
+                              >
+                                <CheckCircle className="h-3 w-3" /> Activer
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                {properties.filter((p) => !search ||
-                  p.title?.toLowerCase().includes(search.toLowerCase()) ||
-                  p.host_name?.toLowerCase().includes(search.toLowerCase()) ||
-                  p.wilaya?.toLowerCase().includes(search.toLowerCase())
-                ).length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground text-sm">
-                    Aucune annonce trouvée
-                  </div>
-                )}
+                  ))
+                })()}
               </div>
             </div>
           </TabsContent>
