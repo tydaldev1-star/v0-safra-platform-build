@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -9,6 +9,7 @@ import {
   Home, Calendar, DollarSign, Plus, BarChart2, FileText, Star,
   CheckCircle, Clock, XCircle, Eye, Trash2, TrendingUp, Users,
   Loader2, AlertTriangle, Phone, Mail, BedDouble, ChevronDown, ChevronUp,
+  Upload, ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -94,6 +95,11 @@ export default function HostDashboard() {
   const [bookingLoading, setBookingLoading] = useState(false)
   const [expandedBooking, setExpandedBooking] = useState<number | null>(null)
   const [actionMessage, setActionMessage] = useState("")
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null)
+  const [docError, setDocError] = useState("")
+  const [docSuccess, setDocSuccess] = useState("")
+  const idDocRef = useRef<HTMLInputElement>(null)
+  const propDocRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!authLoading && (!user || (user.role !== "host" && user.role !== "admin"))) {
@@ -111,6 +117,9 @@ export default function HostDashboard() {
   )
   const { data: statsData, mutate: mutateStats } = useSWR<HostStats>(
     enabled ? "/api/host/stats" : null, fetcher
+  )
+  const { data: docsData, mutate: mutateDocs } = useSWR<{ id_document_url: string | null; verification_status: string; is_verified: boolean }>(
+    enabled ? "/api/host/documents" : null, fetcher
   )
 
   if (authLoading || !user || (user.role !== "host" && user.role !== "admin")) {
@@ -186,6 +195,34 @@ export default function HostDashboard() {
       setBookingLoading(false)
       setBookingAction(null)
       setTimeout(() => setActionMessage(""), 3000)
+    }
+  }
+
+  async function handleDocumentUpload(e: React.ChangeEvent<HTMLInputElement>, docType: string) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingDoc(docType)
+    setDocError("")
+    setDocSuccess("")
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("doc_type", docType)
+      const res = await fetch("/api/host/documents", { method: "POST", body: fd })
+      const json = await res.json()
+      if (!res.ok) {
+        setDocError(json.error || "Erreur lors du téléchargement.")
+        return
+      }
+      setDocSuccess("Document soumis avec succès. Notre équipe va l'examiner sous 48h.")
+      mutateDocs()
+      setTimeout(() => setDocSuccess(""), 5000)
+    } catch {
+      setDocError("Erreur réseau.")
+    } finally {
+      setUploadingDoc(null)
+      if (idDocRef.current) idDocRef.current.value = ""
+      if (propDocRef.current) propDocRef.current.value = ""
     }
   }
 
@@ -556,54 +593,140 @@ export default function HostDashboard() {
 
           {/* ── Documents ── */}
           <TabsContent value="documents">
-            <div className="bg-card border border-border rounded-xl p-6 max-w-lg">
-              <h3 className="font-semibold text-foreground mb-1">{t("host_documents")}</h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Téléchargez vos documents pour valider votre compte hôte.
-              </p>
-
-              <div className="space-y-3 mb-5">
-                {[
-                  { name: "Acte de propriété / Contrat de bail", key: "property_doc" },
-                  { name: "Pièce d'identité (CIN / Passeport)", key: "id_doc" },
-                ].map((doc) => {
-                  const uploaded = doc.key === "id_doc" ? !!user.is_verified : false
-                  return (
-                    <div key={doc.key} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">{doc.name}</span>
-                      </div>
-                      {uploaded ? (
-                        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs gap-1">
-                          <CheckCircle className="h-3 w-3" /> Soumis
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs gap-1">
-                          <Clock className="h-3 w-3" /> En attente
-                        </Badge>
-                      )}
-                    </div>
-                  )
-                })}
+            <div className="bg-card border border-border rounded-xl p-6 max-w-lg space-y-5">
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">{t("host_documents")}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Soumettez vos documents pour valider votre compte hôte.
+                </p>
               </div>
 
-              <div className={`p-3 rounded-lg border text-xs ${
-                user.verification_status === "approved"
+              {/* Verification status banner */}
+              <div className={`p-3 rounded-lg border text-xs font-medium flex items-center gap-2 ${
+                (docsData?.verification_status || user.verification_status) === "approved"
                   ? "bg-green-50 border-green-200 text-green-800"
-                  : user.verification_status === "rejected"
+                  : (docsData?.verification_status || user.verification_status) === "rejected"
                   ? "bg-red-50 border-red-200 text-red-800"
                   : "bg-amber-50 border-amber-200 text-amber-700"
               }`}>
-                <strong>Statut du compte : </strong>
-                {user.verification_status === "approved" && "Vérifié — Votre compte est pleinement actif."}
-                {user.verification_status === "rejected" && "Rejeté — Contactez l'administration pour plus d'informations."}
-                {user.verification_status === "pending"  && "En attente — Vos documents sont en cours d'examen (48h)."}
+                {(docsData?.verification_status || user.verification_status) === "approved"
+                  ? <><CheckCircle className="h-4 w-4" /> Compte vérifié — Votre compte est pleinement actif.</>
+                  : (docsData?.verification_status || user.verification_status) === "rejected"
+                  ? <><XCircle className="h-4 w-4" /> Rejeté — Veuillez soumettre à nouveau vos documents.</>
+                  : <><Clock className="h-4 w-4" /> En attente — Vos documents sont en cours d&apos;examen (48h).</>
+                }
               </div>
 
-              <p className="text-xs text-muted-foreground mt-4">
-                Pour soumettre vos documents, veuillez contacter l&apos;administration à{" "}
-                <a href="mailto:admin@safra.dz" className="text-primary hover:underline">admin@safra.dz</a>.
+              {/* Success / Error messages */}
+              {docSuccess && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 shrink-0" /> {docSuccess}
+                </div>
+              )}
+              {docError && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive flex items-center gap-2">
+                  <XCircle className="h-4 w-4 shrink-0" /> {docError}
+                </div>
+              )}
+
+              {/* ID Document */}
+              <div className="border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-secondary rounded-lg flex items-center justify-center shrink-0">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Pièce d&apos;identité</p>
+                      <p className="text-xs text-muted-foreground">CIN, Passeport — JPG, PNG ou PDF</p>
+                    </div>
+                  </div>
+                  {docsData?.id_document_url ? (
+                    <Badge className="bg-green-100 text-green-700 border-green-200 text-xs gap-1 shrink-0">
+                      <CheckCircle className="h-3 w-3" /> Soumis
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs gap-1 shrink-0">
+                      <Clock className="h-3 w-3" /> Manquant
+                    </Badge>
+                  )}
+                </div>
+
+                {docsData?.id_document_url && (
+                  <a
+                    href={docsData.id_document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Voir le document soumis
+                  </a>
+                )}
+
+                <input
+                  ref={idDocRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => handleDocumentUpload(e, "id_doc")}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  disabled={uploadingDoc === "id_doc"}
+                  onClick={() => idDocRef.current?.click()}
+                >
+                  {uploadingDoc === "id_doc"
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Upload className="h-3.5 w-3.5" />
+                  }
+                  {docsData?.id_document_url ? "Remplacer" : "Télécharger"}
+                </Button>
+              </div>
+
+              {/* Property document */}
+              <div className="border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-secondary rounded-lg flex items-center justify-center shrink-0">
+                      <Home className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Acte de propriété / Contrat de bail</p>
+                      <p className="text-xs text-muted-foreground">Justificatif de logement — JPG, PNG ou PDF</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs gap-1 shrink-0">
+                    <Clock className="h-3 w-3" /> Facultatif
+                  </Badge>
+                </div>
+                <input
+                  ref={propDocRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => handleDocumentUpload(e, "property_doc")}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  disabled={uploadingDoc === "property_doc"}
+                  onClick={() => propDocRef.current?.click()}
+                >
+                  {uploadingDoc === "property_doc"
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Upload className="h-3.5 w-3.5" />
+                  }
+                  Télécharger
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Pour toute question, contactez{" "}
+                <a href="mailto:admin@safra.dz" className="text-primary hover:underline">admin@safra.dz</a>
               </p>
             </div>
           </TabsContent>
