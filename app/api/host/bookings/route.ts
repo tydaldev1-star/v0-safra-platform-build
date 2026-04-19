@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { getSessionUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
 import { query } from "@/lib/db"
 
 export async function GET() {
   try {
-    const cookieStore = await cookies()
-    const sessionToken = cookieStore.get("session_token")?.value
-    if (!sessionToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const user = await getSessionUser(sessionToken)
+    const user = await getCurrentUser()
     if (!user || user.role !== "host") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
