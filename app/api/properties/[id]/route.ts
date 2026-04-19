@@ -70,12 +70,30 @@ export async function GET(
       [property.host_id]
     )
 
+    const primaryImage = images.find((i) => i.is_primary)?.image_url || images[0]?.image_url || null
+
     return NextResponse.json({
       property: {
         ...property,
-        amenities,
+        // Normalized fields expected by the UI
+        title: property.title_fr || property.title_en || "Sans titre",
+        description: property.description_fr || property.description_en || "",
+        type: property.property_type,
+        location: property.city,
+        wilaya: property.wilaya_name_fr,
+        price: Number(property.price_per_night) || 0,
+        guests: property.max_guests || 1,
+        rating: Number(property.avg_rating) || 0,
+        reviewCount: Number(property.review_count) || 0,
+        image: primaryImage,
+        // Structured amenities + raw list for icon mapping
+        amenities: amenities.map((a) => a.code),
+        amenities_detail: amenities,
         images: images.map((i) => i.image_url),
-        reviews,
+        reviews: reviews.map((r) => ({
+          ...r,
+          user_name: r.guest_name || "Voyageur",
+        })),
         host_properties_count: hostPropertiesCount[0]?.count || 0,
       },
     })
