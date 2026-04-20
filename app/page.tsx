@@ -2,330 +2,281 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import {
-  Search,
-  MapPin,
-  Calendar,
-  Users,
-  Shield,
-  Clock,
-  Award,
-  ArrowRight,
-  Star,
-  TrendingUp,
-  Loader2,
+  Search, MapPin, Calendar, Users, Shield, Clock, Award,
+  ArrowRight, Star, Loader2, CheckCircle, Home,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { PropertyCard, Property } from "@/components/property-card"
 import { useI18n } from "@/lib/i18n-context"
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 const DESTINATIONS = [
-  { name: "Alger", image: "/images/property-6.jpg" },
-  { name: "Oran", image: "/images/property-1.jpg" },
-  { name: "Béjaïa", image: "/images/property-3.jpg" },
-  { name: "Tlemcen", image: "/images/property-2.jpg" },
+  { name: "Alger",   image: "/images/property-6.jpg", count: "150+" },
+  { name: "Oran",    image: "/images/property-1.jpg", count: "80+"  },
+  { name: "Béjaïa",  image: "/images/property-3.jpg", count: "60+"  },
+  { name: "Tlemcen", image: "/images/property-2.jpg", count: "45+"  },
 ]
 
-const CATEGORIES = [
-  { labelKey: "type_apartment" as const, icon: "🏢", value: "Appartement" },
-  { labelKey: "type_villa" as const, icon: "🏡", value: "Villa" },
-  { labelKey: "type_chalet" as const, icon: "🏔️", value: "Chalet" },
-  { labelKey: "type_studio" as const, icon: "🏠", value: "Studio" },
-  { labelKey: "type_tent" as const, icon: "⛺", value: "Tente de luxe" },
+const TYPES = [
+  { label: "Appartements", value: "Appartement", icon: "🏢" },
+  { label: "Villas",       value: "Villa",        icon: "🏡" },
+  { label: "Chalets",      value: "Chalet",       icon: "🏔️" },
+  { label: "Studios",      value: "Studio",       icon: "🏠" },
+  { label: "Camping luxe", value: "Tente de luxe",icon: "⛺" },
 ]
 
 export default function HomePage() {
   const { t } = useI18n()
-  const [searchQuery, setSearchQuery] = useState("")
+  const [location, setLocation] = useState("")
+  const [checkin, setCheckin]   = useState("")
+  const [checkout, setCheckout] = useState("")
+  const [guests, setGuests]     = useState("2")
 
-  // Fetch featured properties from API
-  const { data, isLoading } = useSWR<{ properties: Property[]; total: number }>(
-    "/api/properties?limit=6&status=active",
-    fetcher
+  const { data, isLoading } = useSWR<{ properties: Property[] }>(
+    "/api/properties?limit=8&status=active", fetcher
   )
-
-  // Fetch destination counts
-  const { data: statsData } = useSWR<{ properties: Property[] }>(
-    "/api/properties?limit=1000&status=active",
-    fetcher
-  )
-
   const featuredProperties = data?.properties || []
-  
-  // Calculate destination counts
-  const destinationCounts = DESTINATIONS.map((dest) => ({
-    ...dest,
-    count: statsData?.properties?.filter((p) => p.wilaya === dest.name).length || 0,
-  }))
 
-  const totalProperties = statsData?.properties?.length || 0
-  const totalWilayas = new Set(statsData?.properties?.map((p) => p.wilaya)).size || 0
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (location) params.set("q", location)
+    if (checkin)  params.set("checkin", checkin)
+    if (checkout) params.set("checkout", checkout)
+    if (guests)   params.set("guests", guests)
+    window.location.href = `/search?${params.toString()}`
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#f2f2f2]">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative min-h-[600px] flex items-center">
-        <div className="absolute inset-0 z-0">
+      {/* ── Hero ── */}
+      <section className="relative bg-[#003580] pb-0">
+        {/* Background image */}
+        <div className="absolute inset-0">
           <Image
             src="/images/hero-bg.jpg"
             alt="Algérie"
             fill
-            className="object-cover"
+            className="object-cover opacity-20"
             priority
-            loading="eager"
           />
-          <div className="absolute inset-0 bg-brand-navy-dark/65" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full py-20">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 bg-accent/20 border border-accent/30 rounded-full px-4 py-1.5 mb-6">
-              <Star className="h-3.5 w-3.5 text-accent fill-accent" />
-              <span className="text-white/90 text-xs font-semibold tracking-wide uppercase">
-                N°1 Location de Vacances en Algérie
-              </span>
-            </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20">
+          <h1 className="text-white text-3xl sm:text-4xl font-bold mb-2 text-balance">
+            {t("hero_title")}
+          </h1>
+          <p className="text-white/80 text-base mb-8">
+            {t("hero_subtitle")}
+          </p>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-5 leading-tight text-balance">
-              {t("hero_title")}
-            </h1>
-            <p className="text-white/75 text-lg mb-10 leading-relaxed max-w-xl">
-              {t("hero_subtitle")}
-            </p>
-
-            {/* Search card */}
-            <div className="bg-white rounded-2xl p-3 shadow-2xl">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="flex items-center gap-2 flex-1 bg-secondary/60 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-primary/30 transition-all">
-                  <MapPin className="h-4 w-4 text-primary shrink-0" />
-                  <Input
-                    placeholder={t("hero_search_placeholder")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0 text-sm font-medium placeholder:text-muted-foreground/60"
-                  />
-                </div>
-                <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-4 py-3 sm:w-36">
-                  <Calendar className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm text-muted-foreground">{t("search_checkin")}</span>
-                </div>
-                <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-4 py-3 sm:w-32">
-                  <Users className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm text-muted-foreground">2 {t("guests")}</span>
-                </div>
-                <Link href={`/search?q=${searchQuery}`} className="sm:shrink-0">
-                  <Button className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto h-full min-h-[46px] px-6 rounded-xl font-semibold shadow-sm gap-2">
-                    <Search className="h-4 w-4" />
-                    {t("search_btn")}
-                  </Button>
-                </Link>
+          {/* Booking.com yellow search bar */}
+          <div className="bg-[#ffb700] p-2 rounded-lg inline-block w-full max-w-5xl">
+            <div className="flex flex-col sm:flex-row gap-1">
+              {/* Location */}
+              <div className="flex-1 bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 min-w-0">
+                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Où voulez-vous aller ?"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="flex-1 text-sm text-foreground placeholder:text-muted-foreground bg-transparent border-0 outline-none min-w-0"
+                />
               </div>
-            </div>
 
-            {/* Quick stats */}
-            <div className="flex items-center gap-6 mt-6">
-              {[
-                { value: `${totalProperties}+`, label: "Logements" },
-                { value: `${totalWilayas}`, label: "Wilayas" },
-                { value: "15 000+", label: "Voyageurs" },
-              ].map((stat) => (
-                <div key={stat.label} className="text-white/80">
-                  <span className="font-bold text-white text-lg">{stat.value}</span>
-                  <span className="text-xs block text-white/60 mt-0.5">{stat.label}</span>
-                </div>
-              ))}
+              {/* Check-in */}
+              <div className="bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 sm:w-40">
+                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                <input
+                  type="date"
+                  value={checkin}
+                  onChange={(e) => setCheckin(e.target.value)}
+                  className="flex-1 text-sm text-foreground bg-transparent border-0 outline-none w-full"
+                />
+              </div>
+
+              {/* Check-out */}
+              <div className="bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 sm:w-40">
+                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                <input
+                  type="date"
+                  value={checkout}
+                  onChange={(e) => setCheckout(e.target.value)}
+                  className="flex-1 text-sm text-foreground bg-transparent border-0 outline-none w-full"
+                />
+              </div>
+
+              {/* Guests */}
+              <div className="bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 sm:w-32">
+                <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                <select
+                  value={guests}
+                  onChange={(e) => setGuests(e.target.value)}
+                  className="flex-1 text-sm text-foreground bg-transparent border-0 outline-none w-full"
+                >
+                  {[1,2,3,4,5,6,7,8].map((n) => (
+                    <option key={n} value={n}>{n} voyageur{n > 1 ? "s" : ""}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Search button */}
+              <button
+                onClick={handleSearch}
+                className="btn-bk px-6 py-2.5 text-sm font-bold flex items-center gap-2 shrink-0 rounded"
+              >
+                <Search className="h-4 w-4" />
+                {t("search_btn")}
+              </button>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Categories strip */}
-      <section className="py-6 bg-white border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {CATEGORIES.map((cat) => (
-              <Link key={cat.value} href={`/search?type=${cat.value}`}>
-                <div className="flex items-center gap-2 cursor-pointer group whitespace-nowrap border border-border rounded-full px-4 py-2 hover:border-primary hover:bg-primary/5 transition-all">
-                  <span className="text-base">{cat.icon}</span>
-                  <span className="text-sm font-medium text-foreground/70 group-hover:text-primary transition-colors">
-                    {t(cat.labelKey)}
-                  </span>
-                </div>
-              </Link>
+          {/* Trust badges */}
+          <div className="flex flex-wrap gap-4 mt-6">
+            {[
+              { icon: <CheckCircle className="h-4 w-4" />, label: "Logements vérifiés" },
+              { icon: <Shield className="h-4 w-4" />, label: "Paiement sécurisé" },
+              { icon: <Clock className="h-4 w-4" />, label: "Annulation gratuite" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-1.5 text-white/80 text-[13px]">
+                {item.icon}
+                {item.label}
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Featured Listings */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 w-full">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-accent" />
-              <span className="text-xs font-semibold text-accent uppercase tracking-wider">Top annonces</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-balance">
-              Logements à la une
-            </h2>
-            <p className="text-muted-foreground mt-1.5 text-sm">
-              Sélection des meilleurs hébergements en Algérie
-            </p>
+      {/* ── Property type filter tabs ── */}
+      <div className="bg-white border-b border-border shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide py-3">
+            {TYPES.map((t) => (
+              <Link key={t.value} href={`/search?type=${encodeURIComponent(t.value)}`}>
+                <div className="flex items-center gap-2 border border-border hover:border-primary hover:text-primary text-foreground/70 text-[13px] font-medium px-4 py-2 rounded whitespace-nowrap transition-colors cursor-pointer">
+                  <span>{t.icon}</span>
+                  {t.label}
+                </div>
+              </Link>
+            ))}
           </div>
-          <Link href="/search" className="hidden sm:flex">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground font-medium"
-            >
-              {t("see_all")}
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
+        </div>
+      </div>
+
+      {/* ── Popular Destinations ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+        <h2 className="text-xl font-bold text-foreground mb-5">
+          Destinations populaires en Algérie
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {DESTINATIONS.map((dest) => (
+            <Link key={dest.name} href={`/search?location=${dest.name}`}>
+              <div className="relative rounded overflow-hidden group cursor-pointer aspect-[4/3]">
+                <Image
+                  src={dest.image}
+                  alt={dest.name}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-3">
+                  <h3 className="text-white font-bold text-base leading-tight">{dest.name}</h3>
+                  <p className="text-white/75 text-[12px]">{dest.count} logements</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Featured Listings ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 w-full">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xl font-bold text-foreground">
+            Logements à la une
+          </h2>
+          <Link href="/search" className="text-primary text-[13px] font-semibold hover:underline flex items-center gap-1">
+            Voir tout <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
           </div>
         ) : featuredProperties.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-muted-foreground">Aucune annonce disponible pour le moment.</p>
+          <div className="text-center py-16 bg-white border border-border rounded p-8">
+            <Home className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">Aucun logement disponible pour le moment.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="flex flex-col gap-3">
             {featuredProperties.map((p) => (
               <PropertyCard key={p.id} property={p} />
             ))}
           </div>
         )}
-
-        <div className="mt-8 text-center sm:hidden">
-          <Link href="/search">
-            <Button variant="outline" className="gap-2 border-primary/30 text-primary">
-              {t("see_all")} <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
       </section>
 
-      {/* Popular Destinations */}
-      <section className="py-16 bg-secondary/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center gap-2 mb-2">
-            <MapPin className="h-4 w-4 text-accent" />
-            <span className="text-xs font-semibold text-accent uppercase tracking-wider">Explorer</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-1.5 text-balance">
-            Destinations populaires
-          </h2>
-          <p className="text-muted-foreground text-sm mb-8">
-            Explorez les villes les plus demandées
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            {destinationCounts.map((dest) => (
-              <Link key={dest.name} href={`/search?location=${dest.name}`}>
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden group cursor-pointer shadow-sm">
-                  <Image
-                    src={dest.image}
-                    alt={dest.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-dark/80 via-transparent to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="text-white font-bold text-lg leading-tight">{dest.name}</h3>
-                    <p className="text-white/70 text-xs mt-0.5">{dest.count} logements</p>
-                  </div>
-                  <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold rounded-full px-2.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Explorer
-                  </div>
+      {/* ── Why Safra ── */}
+      <section className="bg-white border-t border-b border-border py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl font-bold text-foreground mb-6">Pourquoi choisir Safra ?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: <Shield className="h-7 w-7 text-primary" />,
+                title: "Logements vérifiés",
+                desc: "Chaque annonce est validée par notre équipe avec documents officiels.",
+              },
+              {
+                icon: <Clock className="h-7 w-7 text-primary" />,
+                title: "Réservation simple",
+                desc: "Réservez en quelques clics. Paiement sécurisé CIB / Edahabia.",
+              },
+              {
+                icon: <Award className="h-7 w-7 text-primary" />,
+                title: "Assistance 24h/24",
+                desc: "Notre équipe vous accompagne avant et pendant votre séjour.",
+              },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-[#ebf3ff] rounded flex items-center justify-center shrink-0">
+                  {item.icon}
                 </div>
-              </Link>
+                <div>
+                  <h3 className="font-bold text-[15px] text-foreground mb-1">{item.title}</h3>
+                  <p className="text-muted-foreground text-[13px] leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Why Safra */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 w-full">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 text-balance">
-            Pourquoi choisir Safra ?
-          </h2>
-          <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
-            La plateforme de référence pour la location de logements de vacances en Algérie
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[
-            {
-              icon: <Shield className="h-6 w-6 text-primary" />,
-              title: "Logements vérifiés",
-              desc: "Chaque annonce est validée par notre équipe. Les propriétaires fournissent des documents officiels.",
-            },
-            {
-              icon: <Clock className="h-6 w-6 text-primary" />,
-              title: "Réservation instantanée",
-              desc: "Réservez en quelques minutes. Paiement sécurisé via CIB ou Edahabia.",
-            },
-            {
-              icon: <Award className="h-6 w-6 text-primary" />,
-              title: "Séjours garantis",
-              desc: "Notre équipe est disponible 24h/24 pour vous accompagner avant et pendant votre séjour.",
-            },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="bg-white border border-border rounded-2xl p-7 hover:shadow-md hover:border-primary/20 transition-all"
-            >
-              <div className="w-12 h-12 bg-primary/8 rounded-xl flex items-center justify-center mb-5">
-                {item.icon}
-              </div>
-              <h3 className="font-semibold text-foreground text-base mb-2">{item.title}</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Host CTA */}
-      <section className="py-4 px-4 sm:px-6 max-w-7xl mx-auto w-full pb-16">
-        <div className="bg-brand-navy rounded-3xl overflow-hidden relative">
-          <div className="absolute inset-0 opacity-10">
-            <Image src="/images/hero-bg.jpg" alt="" fill className="object-cover" />
+      {/* ── Host CTA ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+        <div className="bg-[#003580] rounded-lg overflow-hidden p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="text-white">
+            <p className="text-[#febb02] text-[13px] font-bold uppercase tracking-wider mb-2">Devenez hôte</p>
+            <h2 className="text-2xl font-bold mb-2 text-balance">Vous êtes propriétaire ?</h2>
+            <p className="text-white/70 text-[14px] max-w-md leading-relaxed">
+              Publiez votre logement et commencez à générer des revenus. Processus simple, assistance complète.
+            </p>
           </div>
-          <div className="relative px-8 py-12 md:px-14 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="text-white">
-              <p className="text-accent font-semibold text-sm uppercase tracking-wider mb-3">
-                Devenez hôte
-              </p>
-              <h2 className="text-2xl sm:text-3xl font-bold mb-3 text-balance">
-                Vous êtes propriétaire ?
-              </h2>
-              <p className="text-white/70 text-sm max-w-md leading-relaxed">
-                Publiez votre logement sur Safra et commencez à générer des revenus.
-                Processus simple, assistance complète, paiement garanti.
-              </p>
-            </div>
-            <div className="flex gap-3 shrink-0">
-              <Link href="/register">
-                <Button className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold px-7 rounded-full shadow-lg gap-2">
-                  {t("nav_list_property")}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <Link href="/register" className="shrink-0">
+            <button className="bg-[#0071c2] hover:bg-[#005fa3] text-white font-bold px-8 py-3 rounded text-sm transition-colors flex items-center gap-2">
+              {t("nav_list_property")}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </Link>
         </div>
       </section>
 

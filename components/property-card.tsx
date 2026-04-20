@@ -2,10 +2,9 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Star, Heart, MapPin, Bed, Users, Navigation } from "lucide-react"
+import { Star, MapPin, Bed, Users, Heart, CheckCircle } from "lucide-react"
 import { useState } from "react"
 import { useI18n } from "@/lib/i18n-context"
-import { Badge } from "@/components/ui/badge"
 
 export interface Property {
   id: string
@@ -24,121 +23,132 @@ export interface Property {
   guests: number
   amenities: string[]
   isNew?: boolean
+  is_featured?: boolean
 }
 
 interface PropertyCardProps {
   property: Property
-  showLocationButton?: boolean
 }
 
-function openGoogleMapsDirections(lat: number, lng: number) {
-  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, "_blank")
+function ratingLabel(r: number): string {
+  if (r >= 9) return "Exceptionnel"
+  if (r >= 8) return "Très bien"
+  if (r >= 7) return "Bien"
+  if (r >= 6) return "Satisfaisant"
+  return ""
 }
 
-export function PropertyCard({ property, showLocationButton = true }: PropertyCardProps) {
+export function PropertyCard({ property }: PropertyCardProps) {
   const { t } = useI18n()
   const [wishlisted, setWishlisted] = useState(false)
+  const rating10 = property.rating ? Number((property.rating * 2).toFixed(1)) : 0
 
   return (
-    <Link href={`/listing/${property.id}`} className="group block focus:outline-none">
-      <div className="card-premium bg-card rounded-3xl overflow-hidden">
-        {/* Image container */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+    <Link href={`/listing/${property.id}`} className="block focus:outline-none group">
+      <div className="bk-card">
+        {/* Image */}
+        <div className="relative w-[220px] shrink-0 overflow-hidden">
           <Image
             src={property.image || "/images/property-1.jpg"}
             alt={property.title}
             fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            sizes="220px"
+            className="object-cover group-hover:scale-[1.03] transition-transform duration-500"
           />
-
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
           {/* Wishlist */}
           <button
             onClick={(e) => { e.preventDefault(); setWishlisted(!wishlisted) }}
-            className="absolute top-3.5 right-3.5 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm hover:bg-white hover:scale-110 transition-all duration-200"
-            aria-label="Ajouter aux favoris"
+            className="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors shadow"
+            aria-label="Favoris"
           >
-            <Heart className={`h-3.5 w-3.5 transition-all ${wishlisted ? "fill-red-500 text-red-500 scale-110" : "text-foreground/50"}`} />
+            <Heart className={`h-3.5 w-3.5 ${wishlisted ? "fill-red-500 text-red-500" : "text-gray-500"}`} />
           </button>
-
-          {/* New badge */}
           {property.isNew && (
-            <div className="absolute top-3.5 left-3.5">
-              <span className="bg-white/95 backdrop-blur-md text-foreground text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
-                Nouveau
-              </span>
-            </div>
-          )}
-
-          {/* Maps button */}
-          {showLocationButton && property.lat && property.lng && (
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); openGoogleMapsDirections(property.lat!, property.lng!) }}
-              className="absolute bottom-3.5 left-3.5 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm hover:bg-white hover:scale-110 transition-all duration-200 opacity-0 group-hover:opacity-100"
-              aria-label="Voir sur Google Maps"
-            >
-              <Navigation className="h-3.5 w-3.5 text-primary" />
-            </button>
-          )}
-
-          {/* Type pill */}
-          <div className="absolute bottom-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <span className="bg-black/50 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1 rounded-full">
-              {property.type}
+            <span className="absolute top-2 left-2 bg-[#e8f4ff] text-primary text-[10px] font-bold px-2 py-0.5 rounded">
+              Nouveau
             </span>
-          </div>
+          )}
         </div>
 
         {/* Content */}
-        <div className="p-4">
-          {/* Title + rating row */}
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="font-semibold text-foreground text-[14px] leading-snug line-clamp-1 flex-1 tracking-[-0.01em]">
+        <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+          <div>
+            {/* Type + featured */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                {property.type}
+              </span>
+              {property.is_featured && (
+                <span className="genius-badge">Recommandé</span>
+              )}
+            </div>
+
+            {/* Title */}
+            <h3 className="text-[15px] font-bold text-primary hover:text-primary/80 transition-colors leading-tight line-clamp-1 mb-1">
               {property.title}
             </h3>
-            {property.rating > 0 && (
-              <div className="flex items-center gap-1 shrink-0">
-                <Star className="h-3 w-3 fill-gold text-gold" />
-                <span className="text-[12px] font-semibold text-foreground">{Number(property.rating).toFixed(1)}</span>
-              </div>
-            )}
-          </div>
 
-          {/* Location */}
-          <p className="text-[12px] text-muted-foreground mb-3 flex items-center gap-1">
-            <MapPin className="h-3 w-3 shrink-0" />
-            <span className="truncate">{property.location}, {property.wilaya}</span>
-          </p>
+            {/* Location */}
+            <p className="text-[12px] text-muted-foreground flex items-center gap-1 mb-2">
+              <MapPin className="h-3 w-3 shrink-0" />
+              {property.location}, {property.wilaya}
+            </p>
 
-          {/* Meta row */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground bg-secondary rounded-full px-2.5 py-1">
-              <Bed className="h-3 w-3" />{property.bedrooms} ch.
-            </span>
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground bg-secondary rounded-full px-2.5 py-1">
-              <Users className="h-3 w-3" />{property.guests}
-            </span>
-            {property.reviewCount > 0 && (
-              <span className="text-[11px] text-muted-foreground ml-auto">
-                {property.reviewCount} avis
+            {/* Amenities row */}
+            <div className="flex items-center gap-3 mb-3">
+              <span className="flex items-center gap-1 text-[12px] text-muted-foreground">
+                <Bed className="h-3.5 w-3.5" />
+                {property.bedrooms} chambre{property.bedrooms > 1 ? "s" : ""}
               </span>
-            )}
-          </div>
-
-          {/* Price + CTA */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-1">
-              <span className="text-[15px] font-bold text-foreground tracking-tight">
-                {Number(property.price).toLocaleString("fr-DZ")} DA
+              <span className="text-muted-foreground">·</span>
+              <span className="flex items-center gap-1 text-[12px] text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                {property.guests} voyageur{property.guests > 1 ? "s" : ""}
               </span>
-              <span className="text-[11px] text-muted-foreground font-normal">{t("listing_per_night")}</span>
             </div>
-            <span className="text-[12px] font-semibold text-primary bg-primary/8 rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-all duration-200 cursor-pointer">
-              Réserver
-            </span>
+
+            {/* Free cancellation tag */}
+            <div className="flex items-center gap-1.5 text-[12px] text-[#00795b] font-medium">
+              <CheckCircle className="h-3.5 w-3.5" />
+              Annulation gratuite
+            </div>
+          </div>
+
+          {/* Bottom: score + price */}
+          <div className="flex items-end justify-between mt-3 pt-3 border-t border-border">
+            {/* Score */}
+            <div className="flex items-center gap-2">
+              {rating10 > 0 ? (
+                <>
+                  <span className="score-badge">{rating10.toFixed(1)}</span>
+                  <div>
+                    <p className="text-[12px] font-bold text-foreground leading-tight">
+                      {ratingLabel(rating10)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {property.reviewCount} avis
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Star className="h-3 w-3 fill-gold text-gold" />
+                  Nouveau logement
+                </div>
+              )}
+            </div>
+
+            {/* Price */}
+            <div className="text-right shrink-0">
+              <p className="text-[11px] text-muted-foreground">À partir de</p>
+              <p className="text-[18px] font-bold text-foreground leading-tight">
+                {Number(property.price).toLocaleString("fr-DZ")} DA
+              </p>
+              <p className="text-[11px] text-muted-foreground">{t("listing_per_night")}</p>
+              <button className="mt-2 btn-bk text-sm py-2 px-4 w-full">
+                Voir
+              </button>
+            </div>
           </div>
         </div>
       </div>
