@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         u.full_name as host_name,
         COALESCE(AVG(r.rating), 0) as avg_rating,
         COUNT(DISTINCT r.id) as review_count,
-        (SELECT image_url FROM property_images WHERE property_id = p.id AND is_primary = 1 LIMIT 1) as primary_image
+        (SELECT image_url FROM property_images WHERE property_id = p.id ORDER BY is_primary DESC, sort_order ASC LIMIT 1) as primary_image
       FROM properties p
       JOIN wilayas w ON p.wilaya_id = w.id
       JOIN users u ON p.host_id = u.id
@@ -143,29 +143,30 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    // Get total count
+    // Get total count — reuse same params (LIMIT/OFFSET were hardcoded in the string, not params)
     let countSql = `
       SELECT COUNT(DISTINCT p.id) as total
       FROM properties p
       JOIN wilayas w ON p.wilaya_id = w.id
+      LEFT JOIN reviews r ON p.id = r.property_id
       WHERE p.status = 'active'
     `
-    // Remove limit/offset params for count query
-    const countParams = params.slice(0, -2)
-    
-    // Rebuild WHERE clauses for count (same conditions as above)
     let countWhere = ""
-    let paramIndex = 0
-    
-    if (wilaya) { countWhere += " AND w.name_fr LIKE ?"; paramIndex++ }
-    if (type) { countWhere += " AND p.property_type = ?"; paramIndex++ }
-    if (minPrice) { countWhere += " AND p.price_per_night >= ?"; paramIndex++ }
-    if (maxPrice) { countWhere += " AND p.price_per_night <= ?"; paramIndex++ }
-    if (guests) { countWhere += " AND p.max_guests >= ?"; paramIndex++ }
-    if (bedrooms) { countWhere += " AND p.bedrooms >= ?"; paramIndex++ }
-    if (search) { countWhere += " AND (p.title_fr LIKE ? OR p.title_en LIKE ? OR p.city LIKE ? OR p.address LIKE ?)"; paramIndex += 4 }
+    const countParams: (string | number)[] = []
+
+    if (wilaya) { countWhere += " AND w.name_fr LIKE ?"; countParams.push(`%${wilaya}%`) }
+    if (type) { countWhere += " AND p.property_type = ?"; countParams.push(type) }
+    if (minPrice) { countWhere += " AND p.price_per_night >= ?"; countParams.push(parseFloat(minPrice)) }
+    if (maxPrice) { countWhere += " AND p.price_per_night <= ?"; countParams.push(parseFloat(maxPrice)) }
+    if (guests) { countWhere += " AND p.max_guests >= ?"; countParams.push(parseInt(guests)) }
+    if (bedrooms) { countWhere += " AND p.bedrooms >= ?"; countParams.push(parseInt(bedrooms)) }
+    if (search) {
+      countWhere += " AND (p.title_fr LIKE ? OR p.title_en LIKE ? OR p.city LIKE ? OR p.address LIKE ?)"
+      const s = `%${search}%`
+      countParams.push(s, s, s, s)
+    }
     if (featured === "true") { countWhere += " AND p.is_featured = 1" }
-    if (hostId) { countWhere += " AND p.host_id = ?"; paramIndex++ }
+    if (hostId) { countWhere += " AND p.host_id = ?"; countParams.push(parseInt(hostId)) }
 
     const countResult = await query<{ total: number }[]>(countSql + countWhere, countParams)
     const total = countResult[0]?.total || 0
