@@ -31,10 +31,8 @@ interface PropertyCardProps {
   showLocationButton?: boolean
 }
 
-// Open Google Maps with directions to property
-function openGoogleMapsDirections(lat: number, lng: number, label?: string) {
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-  window.open(url, "_blank")
+function openGoogleMapsDirections(lat: number, lng: number) {
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, "_blank")
 }
 
 export function PropertyCard({ property, showLocationButton = true }: PropertyCardProps) {
@@ -42,107 +40,108 @@ export function PropertyCard({ property, showLocationButton = true }: PropertyCa
   const [wishlisted, setWishlisted] = useState(false)
 
   return (
-    <Link href={`/listing/${property.id}`} className="group block">
-      <div className="bg-white rounded-2xl overflow-hidden border border-border hover:shadow-lg hover:border-primary/20 transition-all duration-300 hover:-translate-y-0.5">
-        {/* Image */}
+    <Link href={`/listing/${property.id}`} className="group block focus:outline-none">
+      <div className="card-premium bg-card rounded-3xl overflow-hidden">
+        {/* Image container */}
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           <Image
-            src={property.image}
+            src={property.image || "/images/property-1.jpg"}
             alt={property.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
+
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
           {/* Wishlist */}
           <button
-            onClick={(e) => {
-              e.preventDefault()
-              setWishlisted(!wishlisted)
-            }}
-            className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-sm"
+            onClick={(e) => { e.preventDefault(); setWishlisted(!wishlisted) }}
+            className="absolute top-3.5 right-3.5 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm hover:bg-white hover:scale-110 transition-all duration-200"
             aria-label="Ajouter aux favoris"
           >
-            <Heart
-              className={`h-4 w-4 transition-colors ${
-                wishlisted ? "fill-red-500 text-red-500" : "text-foreground/60"
-              }`}
-            />
+            <Heart className={`h-3.5 w-3.5 transition-all ${wishlisted ? "fill-red-500 text-red-500 scale-110" : "text-foreground/50"}`} />
           </button>
+
+          {/* New badge */}
           {property.isNew && (
-            <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground text-xs font-semibold px-2.5 shadow-sm">
-              Nouveau
-            </Badge>
+            <div className="absolute top-3.5 left-3.5">
+              <span className="bg-white/95 backdrop-blur-md text-foreground text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
+                Nouveau
+              </span>
+            </div>
           )}
-          {/* Location Button - Opens Google Maps */}
+
+          {/* Maps button */}
           {showLocationButton && property.lat && property.lng && (
             <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                openGoogleMapsDirections(property.lat!, property.lng!, property.title)
-              }}
-              className="absolute bottom-3 left-3 w-9 h-9 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white hover:scale-105 transition-all shadow-md group"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); openGoogleMapsDirections(property.lat!, property.lng!) }}
+              className="absolute bottom-3.5 left-3.5 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm hover:bg-white hover:scale-110 transition-all duration-200 opacity-0 group-hover:opacity-100"
               aria-label="Voir sur Google Maps"
             >
-              <Navigation className="h-4 w-4 text-primary group-hover:text-accent transition-colors" />
+              <Navigation className="h-3.5 w-3.5 text-primary" />
             </button>
           )}
+
+          {/* Type pill */}
+          <div className="absolute bottom-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span className="bg-black/50 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1 rounded-full">
+              {property.type}
+            </span>
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-4">
-          {/* Title + rating */}
-          <div className="flex items-start justify-between gap-2 mb-1.5">
-            <h3 className="font-semibold text-foreground text-sm leading-snug line-clamp-2 flex-1">
+          {/* Title + rating row */}
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-semibold text-foreground text-[14px] leading-snug line-clamp-1 flex-1 tracking-[-0.01em]">
               {property.title}
             </h3>
-            <div className="flex items-center gap-1 shrink-0 mt-0.5">
-              <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-              <span className="text-xs font-bold text-foreground">{property.rating}</span>
-              <span className="text-xs text-muted-foreground">({property.reviewCount})</span>
-            </div>
+            {property.rating > 0 && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Star className="h-3 w-3 fill-gold text-gold" />
+                <span className="text-[12px] font-semibold text-foreground">{Number(property.rating).toFixed(1)}</span>
+              </div>
+            )}
           </div>
 
           {/* Location */}
-          <div className="flex items-center gap-1.5 text-muted-foreground mb-3">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/60" />
-            <span className="text-xs truncate">
-              {property.location}, {property.wilaya}
-            </span>
-          </div>
+          <p className="text-[12px] text-muted-foreground mb-3 flex items-center gap-1">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{property.location}, {property.wilaya}</span>
+          </p>
 
           {/* Meta row */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3 pb-3 border-b border-border">
-            <span className="flex items-center gap-1">
-              <Bed className="h-3.5 w-3.5" />
-              {property.bedrooms} ch.
+          <div className="flex items-center gap-2 mb-4">
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground bg-secondary rounded-full px-2.5 py-1">
+              <Bed className="h-3 w-3" />{property.bedrooms} ch.
             </span>
-            <span className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" />
-              {property.guests} {t("guests")}
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground bg-secondary rounded-full px-2.5 py-1">
+              <Users className="h-3 w-3" />{property.guests}
             </span>
-            <span className="text-xs bg-secondary rounded-md px-2 py-0.5">{property.type}</span>
+            {property.reviewCount > 0 && (
+              <span className="text-[11px] text-muted-foreground ml-auto">
+                {property.reviewCount} avis
+              </span>
+            )}
           </div>
 
-          {/* Price */}
+          {/* Price + CTA */}
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-1">
-              <span className="font-bold text-foreground text-base">
-                {property.price.toLocaleString()} DA
+              <span className="text-[15px] font-bold text-foreground tracking-tight">
+                {Number(property.price).toLocaleString("fr-DZ")} DA
               </span>
-              <span className="text-muted-foreground text-xs">{t("listing_per_night")}</span>
+              <span className="text-[11px] text-muted-foreground font-normal">{t("listing_per_night")}</span>
             </div>
-            <Button_reserve />
+            <span className="text-[12px] font-semibold text-primary bg-primary/8 rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-all duration-200 cursor-pointer">
+              Réserver
+            </span>
           </div>
         </div>
       </div>
     </Link>
-  )
-}
-
-function Button_reserve() {
-  return (
-    <span className="text-xs font-semibold text-primary border border-primary/25 rounded-full px-3 py-1 hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer">
-      Réserver
-    </span>
   )
 }
