@@ -203,3 +203,22 @@ input:focus, textarea:focus, select:focus {
 
 .text-balance { text-wrap: balance; }
 .text-pretty  { text-wrap: pretty; }
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  /* Full-width search inputs stacked */
+  .bk-search-box input,
+  .bk-search-box select {
+    font-size: 16px; /* prevent iOS zoom on focus */
+  }
+
+  /* Property card: full image on mobile */
+  .bk-card {
+    flex-direction: column !important;
+  }
+  .bk-card-img {
+    width: 100% !important;
+    height: 180px !important;
+    flex-shrink: 0;
+  }
+}

@@ -117,19 +117,20 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20">
-          <h1 className="text-white text-3xl sm:text-4xl font-bold mb-2 text-balance">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-16 sm:pb-20">
+          <h1 className="text-white text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 text-balance leading-tight">
             {t("hero_title")}
           </h1>
-          <p className="text-white/80 text-base mb-8">
+          <p className="text-white/80 text-sm sm:text-base mb-6">
             {t("hero_subtitle")}
           </p>
 
           {/* Search bar */}
           <div className="w-full max-w-5xl">
-            <div className="flex flex-col sm:flex-row rounded-lg overflow-visible border-2 border-[#ffb700]">
+            {/* Mobile: stacked column with yellow outline */}
+            <div className="flex flex-col sm:flex-row rounded-lg overflow-visible border-2 border-[#ffb700] bg-[#ffb700] gap-[1px]">
               {/* Location */}
-              <div className="flex-1 bg-white flex items-center gap-2 px-3 py-3 min-w-0 border-r border-[#e7e7e7]">
+              <div className="flex-1 bg-white flex items-center gap-2 px-3 py-3 min-w-0 sm:border-r sm:border-b-0 border-b border-[#e7e7e7]">
                 <MapPin className="h-4 w-4 text-[#6b6b6b] shrink-0" />
                 <input
                   type="text"
@@ -137,12 +138,12 @@ export default function HomePage() {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="flex-1 text-sm text-[#333] placeholder:text-[#6b6b6b] bg-transparent border-0 outline-none min-w-0"
+                  className="flex-1 text-sm text-[#333] placeholder:text-[#6b6b6b] bg-transparent border-0 outline-none min-w-0 text-[16px] sm:text-sm"
                 />
               </div>
 
               {/* Dates — combined Booking.com style */}
-              <div className="relative bg-white border-r border-[#e7e7e7] sm:w-80" ref={datesRef}>
+              <div className="relative bg-white sm:border-r sm:border-b-0 border-b border-[#e7e7e7] sm:w-80" ref={datesRef}>
                 <button
                   type="button"
                   onClick={() => setDatesOpen((v) => !v)}
@@ -162,7 +163,7 @@ export default function HomePage() {
 
                 {/* Date picker dropdown */}
                 {datesOpen && (
-                  <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-[#e7e7e7] rounded shadow-xl p-4 flex flex-col sm:flex-row gap-4 min-w-[280px]">
+                  <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-[#e7e7e7] rounded shadow-xl p-4 flex flex-col sm:flex-row gap-4 w-[calc(100vw-2rem)] sm:w-auto max-w-sm sm:max-w-none">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Date d&apos;arrivée</label>
                       <input
@@ -199,7 +200,7 @@ export default function HomePage() {
               </div>
 
               {/* Guests — popover trigger */}
-              <div className="relative bg-white border-r border-[#e7e7e7] sm:w-56" ref={guestsRef}>
+              <div className="relative bg-white sm:border-r sm:border-b-0 border-b border-[#e7e7e7] sm:w-56" ref={guestsRef}>
                 <button
                   type="button"
                   onClick={() => setGuestsOpen((v) => !v)}
@@ -229,7 +230,7 @@ export default function HomePage() {
               {/* Search button */}
               <button
                 onClick={handleSearch}
-                className="bg-[#0071c2] hover:bg-[#005fa3] text-white px-6 py-3 text-sm font-bold flex items-center justify-center gap-2 shrink-0 transition-colors rounded-r-[4px]"
+                className="bg-[#0071c2] hover:bg-[#005fa3] text-white px-6 py-3.5 text-sm font-bold flex items-center justify-center gap-2 shrink-0 transition-colors sm:rounded-r-[4px]"
               >
                 <Search className="h-4 w-4" />
                 {t("search_btn")}
@@ -253,13 +254,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Property type filter */}
-      <div className="bg-white border-b border-border shadow-sm">
+      {/* Property type filter — visible on all screen sizes */}
+      <div className="bg-white border-b border-[#e7e7e7] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-1 overflow-x-auto py-3" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-2 overflow-x-auto py-3" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
             {TYPES.map((tp) => (
               <Link key={tp.value} href={`/search?type=${encodeURIComponent(tp.value)}`}>
-                <div className="flex items-center gap-2 border border-border hover:border-primary hover:text-primary text-foreground/70 text-[13px] font-medium px-4 py-2 rounded whitespace-nowrap transition-colors cursor-pointer">
+                <div className="flex items-center gap-1.5 border border-[#e7e7e7] hover:border-[#0071c2] hover:text-[#0071c2] text-[#333] text-[13px] font-medium px-4 py-2 rounded whitespace-nowrap transition-colors cursor-pointer">
                   {tp.label}
                 </div>
               </Link>
