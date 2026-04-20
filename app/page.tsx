@@ -31,16 +31,21 @@ export default function HomePage() {
 
   // Guests popover state
   const [guestsOpen, setGuestsOpen] = useState(false)
+  const [datesOpen,  setDatesOpen]  = useState(false)
   const [adults, setAdults]         = useState(2)
   const [children, setChildren]     = useState(0)
   const [rooms, setRooms]           = useState(1)
   const guestsRef = useRef<HTMLDivElement>(null)
+  const datesRef  = useRef<HTMLDivElement>(null)
 
-  // Close popover on outside click
+  // Close popovers on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (guestsRef.current && !guestsRef.current.contains(e.target as Node)) {
         setGuestsOpen(false)
+      }
+      if (datesRef.current && !datesRef.current.contains(e.target as Node)) {
+        setDatesOpen(false)
       }
     }
     document.addEventListener("mousedown", handler)
@@ -136,26 +141,61 @@ export default function HomePage() {
                 />
               </div>
 
-              {/* Check-in */}
-              <div className="bg-white flex items-center gap-2 px-3 py-3 sm:w-44 border-r border-[#e7e7e7]">
-                <Calendar className="h-4 w-4 text-[#6b6b6b] shrink-0" />
-                <input
-                  type="date"
-                  value={checkin}
-                  onChange={(e) => setCheckin(e.target.value)}
-                  className="flex-1 text-sm text-[#333] bg-transparent border-0 outline-none w-full"
-                />
-              </div>
+              {/* Dates — combined Booking.com style */}
+              <div className="relative bg-white border-r border-[#e7e7e7] sm:w-80" ref={datesRef}>
+                <button
+                  type="button"
+                  onClick={() => setDatesOpen((v) => !v)}
+                  className="w-full h-full flex items-center gap-2 px-3 py-3 text-left"
+                >
+                  <Calendar className="h-4 w-4 text-[#6b6b6b] shrink-0" />
+                  <div className="flex-1 flex items-center gap-1 text-sm min-w-0">
+                    <span className={checkin ? "text-[#333] font-medium" : "text-[#6b6b6b]"}>
+                      {checkin ? new Date(checkin).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "Date d'arrivée"}
+                    </span>
+                    <span className="text-[#6b6b6b] mx-0.5">—</span>
+                    <span className={checkout ? "text-[#333] font-medium" : "text-[#6b6b6b]"}>
+                      {checkout ? new Date(checkout).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "Date de départ"}
+                    </span>
+                  </div>
+                </button>
 
-              {/* Check-out */}
-              <div className="bg-white flex items-center gap-2 px-3 py-3 sm:w-44 border-r border-[#e7e7e7]">
-                <Calendar className="h-4 w-4 text-[#6b6b6b] shrink-0" />
-                <input
-                  type="date"
-                  value={checkout}
-                  onChange={(e) => setCheckout(e.target.value)}
-                  className="flex-1 text-sm text-[#333] bg-transparent border-0 outline-none w-full"
-                />
+                {/* Date picker dropdown */}
+                {datesOpen && (
+                  <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-[#e7e7e7] rounded shadow-xl p-4 flex flex-col sm:flex-row gap-4 min-w-[280px]">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Date d&apos;arrivée</label>
+                      <input
+                        type="date"
+                        value={checkin}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={(e) => {
+                          setCheckin(e.target.value)
+                          if (checkout && e.target.value >= checkout) setCheckout("")
+                        }}
+                        className="border border-[#e7e7e7] rounded px-3 py-2 text-sm text-[#333] outline-none focus:border-[#0071c2]"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Date de départ</label>
+                      <input
+                        type="date"
+                        value={checkout}
+                        min={checkin || new Date().toISOString().split("T")[0]}
+                        onChange={(e) => setCheckout(e.target.value)}
+                        className="border border-[#e7e7e7] rounded px-3 py-2 text-sm text-[#333] outline-none focus:border-[#0071c2]"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        onClick={() => setDatesOpen(false)}
+                        className="w-full sm:w-auto px-5 py-2 border border-[#0071c2] text-[#0071c2] text-sm font-semibold rounded hover:bg-[#ebf3ff] transition-colors whitespace-nowrap"
+                      >
+                        Terminer
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Guests — popover trigger */}
