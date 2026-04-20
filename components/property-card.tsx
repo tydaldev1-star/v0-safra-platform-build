@@ -47,13 +47,15 @@ export function PropertyCard({ property }: PropertyCardProps) {
     <Link href={`/listing/${property.id}`} className="block focus:outline-none group">
       <div className="bk-card">
         {/* Image */}
-        <div className="relative w-[220px] shrink-0 overflow-hidden">
+        <div className="relative w-[220px] shrink-0 overflow-hidden bg-secondary">
           <Image
-            src={property.image || "/images/property-1.jpg"}
+            src={property.image && property.image.startsWith("/") ? property.image : (property.image || "/images/property-1.jpg")}
             alt={property.title}
             fill
             sizes="220px"
+            unoptimized={!!(property.image && property.image.startsWith("/uploads/"))}
             className="object-cover group-hover:scale-[1.03] transition-transform duration-500"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/images/property-1.jpg" }}
           />
           {/* Wishlist */}
           <button

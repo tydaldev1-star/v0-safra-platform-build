@@ -6,7 +6,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import {
   Search, MapPin, Calendar, Users, Shield, Clock, Award,
-  ArrowRight, Star, Loader2, CheckCircle, Home,
+  ArrowRight, Star, Loader2, CheckCircle, Home, CreditCard,
 } from "lucide-react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -77,49 +77,51 @@ export default function HomePage() {
           </p>
 
           {/* Booking.com yellow search bar */}
-          <div className="bg-[#ffb700] p-2 rounded-lg inline-block w-full max-w-5xl">
-            <div className="flex flex-col sm:flex-row gap-1">
+          <div className="w-full max-w-5xl">
+            <div className="flex flex-col sm:flex-row gap-0 rounded-lg overflow-hidden border-2 border-[#ffb700] bg-[#ffb700]">
               {/* Location */}
-              <div className="flex-1 bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 min-w-0">
-                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 bg-white flex items-center gap-2 px-3 py-3 min-w-0 border-r border-[#ffb700]">
+                <MapPin className="h-4 w-4 text-[#6b6b6b] shrink-0" />
                 <input
                   type="text"
                   placeholder="Où voulez-vous aller ?"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="flex-1 text-sm text-foreground placeholder:text-muted-foreground bg-transparent border-0 outline-none min-w-0"
+                  className="flex-1 text-sm text-[#333] placeholder:text-[#6b6b6b] bg-transparent border-0 outline-none min-w-0"
                 />
               </div>
 
               {/* Check-in */}
-              <div className="bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 sm:w-40">
-                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="bg-white flex items-center gap-2 px-3 py-3 sm:w-44 border-r border-[#ffb700]">
+                <Calendar className="h-4 w-4 text-[#6b6b6b] shrink-0" />
                 <input
                   type="date"
                   value={checkin}
                   onChange={(e) => setCheckin(e.target.value)}
-                  className="flex-1 text-sm text-foreground bg-transparent border-0 outline-none w-full"
+                  placeholder="Arrivée"
+                  className="flex-1 text-sm text-[#333] bg-transparent border-0 outline-none w-full"
                 />
               </div>
 
               {/* Check-out */}
-              <div className="bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 sm:w-40">
-                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="bg-white flex items-center gap-2 px-3 py-3 sm:w-44 border-r border-[#ffb700]">
+                <Calendar className="h-4 w-4 text-[#6b6b6b] shrink-0" />
                 <input
                   type="date"
                   value={checkout}
                   onChange={(e) => setCheckout(e.target.value)}
-                  className="flex-1 text-sm text-foreground bg-transparent border-0 outline-none w-full"
+                  placeholder="Départ"
+                  className="flex-1 text-sm text-[#333] bg-transparent border-0 outline-none w-full"
                 />
               </div>
 
               {/* Guests */}
-              <div className="bg-white border-2 border-[#ffb700] rounded flex items-center gap-2 px-3 py-2.5 sm:w-32">
-                <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="bg-white flex items-center gap-2 px-3 py-3 sm:w-36 border-r border-[#ffb700]">
+                <Users className="h-4 w-4 text-[#6b6b6b] shrink-0" />
                 <select
                   value={guests}
                   onChange={(e) => setGuests(e.target.value)}
-                  className="flex-1 text-sm text-foreground bg-transparent border-0 outline-none w-full"
+                  className="flex-1 text-sm text-[#333] bg-transparent border-0 outline-none w-full cursor-pointer"
                 >
                   {[1,2,3,4,5,6,7,8].map((n) => (
                     <option key={n} value={n}>{n} voyageur{n > 1 ? "s" : ""}</option>
@@ -130,7 +132,7 @@ export default function HomePage() {
               {/* Search button */}
               <button
                 onClick={handleSearch}
-                className="btn-bk px-6 py-2.5 text-sm font-bold flex items-center gap-2 shrink-0 rounded"
+                className="bg-[#0071c2] hover:bg-[#005fa3] text-white px-6 py-3 text-sm font-bold flex items-center justify-center gap-2 shrink-0 transition-colors"
               >
                 <Search className="h-4 w-4" />
                 {t("search_btn")}
@@ -229,7 +231,7 @@ export default function HomePage() {
       <section className="bg-white border-t border-b border-border py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-xl font-bold text-foreground mb-6">Pourquoi choisir Safra ?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
               {
                 icon: <Shield className="h-7 w-7 text-primary" />,
@@ -237,14 +239,19 @@ export default function HomePage() {
                 desc: "Chaque annonce est validée par notre équipe avec documents officiels.",
               },
               {
+                icon: <CheckCircle className="h-7 w-7 text-primary" />,
+                title: "Paiements sécurisés",
+                desc: "Transactions 100% sécurisées via CIB, Edahabia et virement bancaire.",
+              },
+              {
                 icon: <Clock className="h-7 w-7 text-primary" />,
                 title: "Réservation simple",
-                desc: "Réservez en quelques clics. Paiement sécurisé CIB / Edahabia.",
+                desc: "Réservez en quelques clics, annulation gratuite sur la plupart des logements.",
               },
               {
                 icon: <Award className="h-7 w-7 text-primary" />,
                 title: "Assistance 24h/24",
-                desc: "Notre équipe vous accompagne avant et pendant votre séjour.",
+                desc: "Notre équipe vous accompagne avant et pendant votre séjour, 7j/7.",
               },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-4">
